@@ -8,7 +8,6 @@ const PORT = process.env.PORT || 3000;
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, "data");
 const DATA_FILE = path.join(DATA_DIR, "rsvps.json");
 
-// --- tiny JSON-file "database" -------------------------------------------
 function ensureStore() {
   if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
   if (!fs.existsSync(DATA_FILE)) fs.writeFileSync(DATA_FILE, "[]", "utf8");
@@ -35,11 +34,12 @@ function writeAll(entries) {
 
 ensureStore();
 
-// --- middleware ------------------------------------------------------------
 app.use(express.json({ limit: "10kb" }));
-app.use(express.static(path.join(__dirname, "public")));
 
-// --- API ---------------------------------------------------------------
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "index.html"));
+});
+
 app.post("/api/rsvp", (req, res) => {
   const body = req.body || {};
   const name = String(body.name || "").trim().slice(0, 80);

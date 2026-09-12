@@ -199,12 +199,24 @@
     position:fixed; inset:0; background:rgba(20,15,10,.88); z-index:200;
     display:flex; align-items:center; justify-content:center; padding:20px;
   }
-  .photo-lightbox-inner{ max-width:min(640px, 100%); width:100%; text-align:center; }
+  .photo-lightbox-inner{ position:relative; max-width:min(640px, 100%); width:100%; text-align:center; }
   .photo-lightbox-inner img{
     max-width:100%; max-height:70vh; border-radius:8px; display:block; margin:0 auto; background:var(--ivory);
   }
+  .photo-lightbox-arrow{
+    position:absolute; top:50%; transform:translateY(-50%); width:44px; height:44px; border-radius:50%;
+    border:none; background:rgba(20,15,10,.6); color:#fff8ee; font-size:1.3rem; cursor:pointer; line-height:1;
+  }
+  .photo-lightbox-arrow:disabled{ opacity:.3; cursor:default; }
+  .photo-lightbox-arrow-left{ left:-6px; }
+  .photo-lightbox-arrow-right{ right:-6px; }
+  @media (max-width:560px){
+    .photo-lightbox-arrow-left{ left:2px; }
+    .photo-lightbox-arrow-right{ right:2px; }
+  }
+  .photo-lightbox-count{ color:#e7dcc9; font-size:.85rem; margin:12px 0 0; }
   .photo-lightbox-actions{
-    display:flex; gap:12px; justify-content:center; flex-wrap:wrap; margin-top:16px;
+    display:flex; gap:12px; justify-content:center; flex-wrap:wrap; margin-top:12px;
   }
 
   /* ---------- Section heading ---------- */
@@ -549,7 +561,10 @@
 
 <div class="photo-lightbox" id="photoLightbox" hidden>
   <div class="photo-lightbox-inner">
+    <button type="button" id="photoLightboxPrev" class="photo-lightbox-arrow photo-lightbox-arrow-left" aria-label="Previous photo">&larr;</button>
     <img id="photoLightboxImg" src="" alt="" />
+    <button type="button" id="photoLightboxNext" class="photo-lightbox-arrow photo-lightbox-arrow-right" aria-label="Next photo">&rarr;</button>
+    <p class="photo-lightbox-count" id="photoLightboxCount"></p>
     <div class="photo-lightbox-actions">
       <a id="photoLightboxDownload" class="btn-lg" href="#" style="width:auto; display:inline-block; padding:12px 22px;">Download</a>
       <button type="button" id="photoLightboxClose" class="btn-lg outline" style="width:auto; display:inline-block; padding:12px 22px;">Close</button>
@@ -719,14 +734,32 @@
 
   // Tapping a thumbnail opens a full-size view with its own Download and
   // Close controls, instead of downloading straight from the grid — clearer
-  // for guests who just want to look at a photo first.
+  // for guests who just want to look at a photo first. Left/right arrows
+  // (and the keyboard) step through EVERY photo, not just the 3 on the
+  // current gallery page, so browsing doesn't get interrupted by pagination.
   var photoLightbox = document.getElementById('photoLightbox');
   var photoLightboxImg = document.getElementById('photoLightboxImg');
   var photoLightboxDownload = document.getElementById('photoLightboxDownload');
+  var photoLightboxCount = document.getElementById('photoLightboxCount');
+  var photoLightboxPrev = document.getElementById('photoLightboxPrev');
+  var photoLightboxNext = document.getElementById('photoLightboxNext');
+  var lightboxIndex = -1;
 
-  function openPhotoLightbox(photo){
+  function showLightboxPhotoAt(index){
+    if (!galleryPhotos.length) return;
+    if (index < 0) index = 0;
+    if (index > galleryPhotos.length - 1) index = galleryPhotos.length - 1;
+    lightboxIndex = index;
+    var photo = galleryPhotos[lightboxIndex];
     photoLightboxImg.src = photo.imageUrl;
     photoLightboxDownload.href = '/api/guest-photos/' + photo.id + '/download';
+    photoLightboxCount.textContent = galleryPhotos.length > 1 ? (lightboxIndex + 1) + ' / ' + galleryPhotos.length : '';
+    photoLightboxPrev.disabled = lightboxIndex === 0;
+    photoLightboxNext.disabled = lightboxIndex === galleryPhotos.length - 1;
+  }
+  function openPhotoLightbox(photo){
+    var index = galleryPhotos.findIndex(function(p){ return p.id === photo.id; });
+    showLightboxPhotoAt(index === -1 ? 0 : index);
     photoLightbox.hidden = false;
   }
   function closePhotoLightbox(){
@@ -742,11 +775,16 @@
     if (photo) openPhotoLightbox(photo);
   });
   document.getElementById('photoLightboxClose').addEventListener('click', closePhotoLightbox);
+  photoLightboxPrev.addEventListener('click', function(){ showLightboxPhotoAt(lightboxIndex - 1); });
+  photoLightboxNext.addEventListener('click', function(){ showLightboxPhotoAt(lightboxIndex + 1); });
   photoLightbox.addEventListener('click', function(e){
     if (e.target === photoLightbox) closePhotoLightbox(); // click on the dark backdrop itself
   });
   document.addEventListener('keydown', function(e){
-    if (e.key === 'Escape' && !photoLightbox.hidden) closePhotoLightbox();
+    if (photoLightbox.hidden) return;
+    if (e.key === 'Escape') closePhotoLightbox();
+    else if (e.key === 'ArrowLeft') showLightboxPhotoAt(lightboxIndex - 1);
+    else if (e.key === 'ArrowRight') showLightboxPhotoAt(lightboxIndex + 1);
   });
 
   function loadPhotoGallery(resetToFirstPage){

@@ -73,37 +73,38 @@ function isWeddingDayInManila() {
   return todayManila === WEDDING_DATE_MANILA;
 }
 
-// Add or update one seating entry by name (case-insensitive match).
-function upsertSeating(list, rawName, rawTable) {
+// Add or update one seating entry by name (case-insensitive match). This is
+// the ONLY way a name gets onto the guest list — via Excel upload or an
+// admin adding/editing a row here — never automatically from the public
+// RSVP form, so the wedding stays invite-only.
+//
+// rawMaxGuests follows the same "blank means leave it alone" rule as an
+// Excel re-upload that doesn't include a Guests column: pass undefined/""
+// to preserve whatever is already set (defaulting a brand-new entry to 1),
+// or a number to set it explicitly.
+function upsertSeating(list, rawName, rawTable, rawMaxGuests) {
   const name = String(rawName || "").trim().slice(0, 80);
   const table = String(rawTable || "").trim().slice(0, 20);
   const key = normName(name);
   if (!key) return { entry: null, created: false };
+
+  let maxGuests; // undefined = leave as-is / default to 1 for a new entry
+  if (rawMaxGuests !== undefined && rawMaxGuests !== null && String(rawMaxGuests).trim() !== "") {
+    const parsed = parseInt(rawMaxGuests, 10);
+    if (Number.isFinite(parsed) && parsed >= 1) maxGuests = Math.min(parsed, 20);
+  }
+
   const idx = list.findIndex((s) => normName(s.name) === key);
   if (idx === -1) {
-    const entry = { id: crypto.randomUUID(), name, table: table || null };
+    const entry = { id: crypto.randomUUID(), name, table: table || null, maxGuests: maxGuests || 1 };
     list.push(entry);
     return { entry, created: true };
   }
   list[idx].table = table || null;
   if (name) list[idx].name = name;
+  if (maxGuests !== undefined) list[idx].maxGuests = maxGuests;
+  else if (!list[idx].maxGuests) list[idx].maxGuests = 1;
   return { entry: list[idx], created: false };
-}
-
-// Make sure a seating record (and therefore a stable id for a QR code)
-// exists for this name, WITHOUT touching a table number that may already
-// be there (e.g. from an Excel upload done ahead of time). Used right when
-// a guest RSVPs "yes", so their personal QR code exists immediately.
-function ensureSeating(list, rawName) {
-  const name = String(rawName || "").trim().slice(0, 80);
-  const key = normName(name);
-  if (!key) return null;
-  let entry = list.find((s) => normName(s.name) === key);
-  if (!entry) {
-    entry = { id: crypto.randomUUID(), name, table: null };
-    list.push(entry);
-  }
-  return entry;
 }
 
 async function generateQrSvg(url) {
@@ -181,60 +182,86 @@ app.post("/api/rsvp", (req, res) => {
   const body = req.body || {};
   const name = String(body.name || "").trim().slice(0, 80);
   const attending = body.attending === "yes" ? "yes" : body.attending === "no" ? "no" : null;
-  let guests = parseInt(body.guests, 10);
   const message = String(body.message || "").trim().slice(0, 300);
 
   if (!name) return res.status(400).json({ error: "Please enter your name." });
   if (!attending) return res.status(400).json({ error: "Please let us know if you can make it." });
+
+  // The wedding is invite-only: an RSVP can only be submitted for a name
+  // that's already on Annie & Jay's guest list (uploaded via Excel, or
+  // added by hand in the admin seating list) — nobody can add themselves,
+  // or anyone else, to the list just by filling out this form.
+  const seatingList = readSeating();
+  const seatEntry = seatingList.find((s) => normName(s.name) === normName(name));
+  if (!seatEntry) {
+    return res.status(404).json({
+      error: `We couldn't find "${name}" on our guest list. Please check the spelling, or reach out to Annie & Jay if you think this is a mistake.`,
+    });
+  }
+
+  const maxGuests = seatEntry.maxGuests || 1;
+  let guests = parseInt(body.guests, 10);
   if (attending === "yes") {
     if (!Number.isFinite(guests) || guests < 1) guests = 1;
-    if (guests > 10) guests = 10;
+    if (guests > maxGuests) {
+      return res.status(400).json({
+        error: `Your invitation allows up to ${maxGuests} ${maxGuests === 1 ? "guest" : "guests"}. Please reach out to Annie & Jay if you need to bring more.`,
+      });
+    }
   } else {
     guests = 0;
   }
 
   // Optional named additional guests in the party (e.g. "and my husband and
-  // two kids") — capped to the headcount minus the person filling out the
-  // form, and to a sane list size regardless of what the client sends.
+  // two kids") — each one must ALSO already be on the guest list, same as
+  // the primary respondent. Capped to the headcount minus the person
+  // filling out the form, regardless of what the client sends.
   const rawPartyNames = Array.isArray(body.partyNames) ? body.partyNames : [];
   const maxParty = attending === "yes" ? Math.max(0, guests - 1) : 0;
-  const partyNames = rawPartyNames
+  const candidateNames = rawPartyNames
     .map((n) => String(n || "").trim().slice(0, 80))
     .filter(Boolean)
     .slice(0, maxParty);
 
-  const entries = readAll();
-
-  // A guest who is coming gets a seating record (and so a stable id for
-  // their personal QR code) right away — the table number itself may still
-  // be blank until Annie assigns it, which the table page handles gracefully.
-  // Named additional guests each get their own seating record too, so they
-  // can be found, seated, and checked in individually.
-  let seatingId = null;
-  if (attending === "yes") {
-    const seatingList = readSeating();
-    const seatEntry = ensureSeating(seatingList, name);
-    partyNames.forEach((partyName) => {
-      if (normName(partyName) !== normName(name)) ensureSeating(seatingList, partyName);
-    });
-    writeSeating(seatingList);
-    seatingId = seatEntry ? seatEntry.id : null;
+  const partyNames = [];
+  for (const candidate of candidateNames) {
+    if (normName(candidate) === normName(seatEntry.name)) continue; // skip an accidental self-duplicate
+    const found = seatingList.find((s) => normName(s.name) === normName(candidate));
+    if (!found) {
+      return res.status(404).json({
+        error: `We couldn't find "${candidate}" on our guest list. Please check the spelling, or reach out to Annie & Jay if you think this is a mistake.`,
+      });
+    }
+    partyNames.push(found.name);
   }
 
+  const entries = readAll();
   const entry = {
     id: crypto.randomUUID(),
-    name,
+    name: seatEntry.name, // canonical spelling from the guest list
     attending,
     guests,
     partyNames,
     message,
-    seatingId,
+    seatingId: seatEntry.id,
     submittedAt: new Date().toISOString(),
   };
   entries.push(entry);
   writeAll(entries);
 
-  res.status(201).json({ ok: true, entry, seatingId });
+  res.status(201).json({ ok: true, entry, seatingId: seatEntry.id });
+});
+
+// Exact-match lookup used by the RSVP form: confirms a typed name is
+// actually on the guest list, and reports how many guests that invitation
+// is allowed to bring (so the form can cap the dropdown before submitting).
+app.get("/api/guest-lookup", (req, res) => {
+  const key = normName(req.query.name);
+  if (!key) return res.json({ found: false });
+  const list = readSeating();
+  const entry = list.find((s) => normName(s.name) === key);
+  if (!entry) return res.json({ found: false });
+  res.json({ found: true, name: entry.name, maxGuests: entry.maxGuests || 1 });
 });
 
 app.get("/api/rsvps", (req, res) => {
@@ -294,6 +321,45 @@ function findSeatingMatches(rawName) {
   return { exact: null, candidates: partial.map((s) => s.name) };
 }
 
+// A guest's QR code (or name search) shows their WHOLE party together —
+// themselves plus anyone they named as additional guests on their RSVP —
+// each with their own table number and check-in state, all from one scan.
+// If this person isn't part of any RSVP's party (e.g. an admin-added
+// seating entry nobody has RSVP'd for yet), the "party" is just themselves.
+function getPartyFor(seatingEntry) {
+  const seatingList = readSeating();
+  const rsvps = readAll();
+  const key = normName(seatingEntry.name);
+
+  const owningRsvp = rsvps.find((e) => {
+    if (e.attending !== "yes") return false;
+    if (normName(e.name) === key) return true;
+    return Array.isArray(e.partyNames) && e.partyNames.some((n) => normName(n) === key);
+  });
+
+  const names = owningRsvp
+    ? [owningRsvp.name].concat(Array.isArray(owningRsvp.partyNames) ? owningRsvp.partyNames : [])
+    : [seatingEntry.name];
+
+  const seen = {};
+  const party = [];
+  names.forEach((n) => {
+    const k = normName(n);
+    if (seen[k]) return;
+    seen[k] = true;
+    const seat = seatingList.find((s) => normName(s.name) === k);
+    if (!seat) return;
+    party.push({
+      id: seat.id,
+      name: seat.name,
+      table: seat.table || null,
+      checkedIn: !!seat.checkedIn,
+      checkedInAt: seat.checkedInAt || null,
+    });
+  });
+  return party;
+}
+
 app.get("/api/table", (req, res) => {
   const { exact, candidates } = findSeatingMatches(req.query.name);
   if (exact) {
@@ -304,6 +370,7 @@ app.get("/api/table", (req, res) => {
       table: exact.table || null,
       checkedIn: !!exact.checkedIn,
       checkedInAt: exact.checkedInAt || null,
+      party: getPartyFor(exact),
     });
   }
   if (candidates.length > 1) {
@@ -330,7 +397,9 @@ app.get("/api/seating-names", (req, res) => {
   res.json({ names: startsWith.concat(contains).slice(0, 8) });
 });
 
-// Personal lookup by the id embedded in a guest's own QR code.
+// Personal lookup by the id embedded in a guest's own QR code. One QR code
+// (the primary RSVP respondent's) is enough for the whole party — the
+// response includes everyone in it via getPartyFor().
 app.get("/api/table/:id", (req, res) => {
   const list = readSeating();
   const entry = list.find((s) => s.id === req.params.id);
@@ -342,6 +411,7 @@ app.get("/api/table/:id", (req, res) => {
     table: entry.table || null,
     checkedIn: !!entry.checkedIn,
     checkedInAt: entry.checkedInAt || null,
+    party: getPartyFor(entry),
   });
 });
 
@@ -453,7 +523,7 @@ app.post("/api/admin/seating", (req, res) => {
   if (!name) return res.status(400).json({ error: "Please enter a name." });
 
   const list = readSeating();
-  const { entry, created } = upsertSeating(list, name, body.table);
+  const { entry, created } = upsertSeating(list, name, body.table, body.maxGuests);
   writeSeating(list);
   res.status(created ? 201 : 200).json({ ok: true, entry, created });
 });
@@ -466,10 +536,14 @@ app.delete("/api/admin/seating/:id", (req, res) => {
   res.json({ ok: true });
 });
 
-// Bulk-import from an Excel file: columns "Name" / "Full Name" and
-// "Table" / "Table Number" (header matching is case-insensitive). Existing
-// names are matched case-insensitively and updated in place; everyone
-// else is added. Nothing is ever deleted by an upload.
+// Bulk-import from an Excel file: columns "Name" / "Full Name", "Table" /
+// "Table Number", and an optional "Guests" / "Max Guests" / "Party Size"
+// column (header matching is case-insensitive) that sets how many people
+// that invitation may bring — this is the ONLY place that count comes
+// from; if the column is left out for a row, an existing entry's number
+// stays as it was, and a brand-new one defaults to 1. Existing names are
+// matched case-insensitively and updated in place; everyone else is
+// added. Nothing is ever deleted by an upload.
 app.post("/api/admin/seating/upload", (req, res) => {
   const body = req.body || {};
   const base64 = String(body.data || "");
@@ -493,6 +567,8 @@ app.post("/api/admin/seating/upload", (req, res) => {
     || headerKeys.find((k) => /name/i.test(k));
   const tableKey = headerKeys.find((k) => /^(table\s*(no\.?|number|#)?|seat(ing)?)$/i.test(k.trim()))
     || headerKeys.find((k) => /table|seat/i.test(k));
+  const maxGuestsKey = headerKeys.find((k) => /^(max\s*guests?|guests?\s*(allowed|allotted)?|party\s*size|no\.?\s*of\s*guests|number\s*of\s*guests|total\s*guests?)$/i.test(k.trim()))
+    || headerKeys.find((k) => /guest/i.test(k));
 
   if (!nameKey) {
     return res.status(400).json({ error: "Could not find a Name column. Please include a column named \"Name\"." });
@@ -503,8 +579,9 @@ app.post("/api/admin/seating/upload", (req, res) => {
   rows.forEach((row) => {
     const name = String(row[nameKey] || "").trim();
     const table = tableKey ? String(row[tableKey] || "").trim() : "";
+    const maxGuestsRaw = maxGuestsKey ? row[maxGuestsKey] : undefined;
     if (!name) { skipped++; return; }
-    const { created: wasCreated } = upsertSeating(list, name, table);
+    const { created: wasCreated } = upsertSeating(list, name, table, maxGuestsRaw);
     if (wasCreated) created++; else updated++;
   });
   writeSeating(list);

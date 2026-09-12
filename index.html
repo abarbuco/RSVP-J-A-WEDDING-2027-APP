@@ -247,6 +247,8 @@
   .field{ margin-bottom:16px; }
   .field label{ display:block; font-size:.8rem; letter-spacing:.05em; text-transform:uppercase; color:var(--ink-soft); margin-bottom:6px; }
   .field-hint{ margin:6px 2px 0; font-size:.78rem; color:var(--ink-soft); line-height:1.5; }
+  .field-hint.error-hint{ color:var(--rust-deep); }
+  .field-hint.error-hint[hidden]{ display:none; }
   .name-autocomplete{ position:relative; }
   .name-suggestions{
     position:absolute; left:0; right:0; top:calc(100% + 4px); z-index:20;
@@ -496,6 +498,7 @@
           <div class="name-suggestions" id="nameSuggestions" hidden></div>
         </div>
         <p class="field-hint">Start typing and tap your name if it appears — that's the easiest way to match you to your table.</p>
+        <p class="field-hint error-hint" id="nameLookupMsg" hidden></p>
       </div>
 
       <div class="field">
@@ -535,7 +538,7 @@
     <div class="qr-result" id="qrResult" hidden>
       <p class="qr-result-label">Your personal QR code</p>
       <img id="qrResultImg" class="qr-result-img" width="170" height="170" alt="Your personal QR code — scan to find your table" />
-      <p class="qr-result-hint">Save a screenshot of this, or take a photo — scan it on the day to see your table number and the wedding program. You can also just visit <a id="qrResultLink" href="#">this link</a> anytime.</p>
+      <p class="qr-result-hint">Save a screenshot of this, or take a photo — scan it on the day to see your whole party's table numbers, check in, and the wedding program. You can also just visit <a id="qrResultLink" href="#">this link</a> anytime.</p>
     </div>
 
     <div class="decline-result" id="declineResult" hidden>
@@ -607,6 +610,7 @@
         btn.addEventListener('click', function(){
           nameInput.value = n;
           hideBox();
+          lookupPrimaryName(n);
         });
         box.appendChild(btn);
       });
@@ -629,11 +633,54 @@
     // suggestion register first.
     nameInput.addEventListener('blur', function(){
       setTimeout(hideBox, 150);
+      lookupPrimaryName(nameInput.value);
     });
     document.addEventListener('click', function(e){
       if (e.target !== nameInput && !box.contains(e.target)) hideBox();
     });
   })();
+
+  // ---------- Reusable name-suggestion autocomplete (for party-member fields) ----------
+  // The wedding is invite-only: guests can only RSVP with names that are
+  // already on Annie & Jay's uploaded guest list, so every name field
+  // (the respondent's own name, and each additional party member) offers
+  // suggestions pulled from that same list rather than accepting free text.
+  function attachGuestAutocomplete(inputEl){
+    var box = document.createElement('div');
+    box.className = 'name-suggestions party-suggestions';
+    box.hidden = true;
+    inputEl.insertAdjacentElement('afterend', box);
+    var debounceTimer = null;
+
+    function hideBox(){ box.hidden = true; box.innerHTML = ''; }
+    function showNames(names){
+      if (!names.length){ hideBox(); return; }
+      box.innerHTML = '';
+      names.forEach(function(n){
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.textContent = n;
+        btn.addEventListener('click', function(){
+          inputEl.value = n;
+          hideBox();
+        });
+        box.appendChild(btn);
+      });
+      box.hidden = false;
+    }
+    inputEl.addEventListener('input', function(){
+      var q = inputEl.value.trim();
+      clearTimeout(debounceTimer);
+      if (q.length < 2){ hideBox(); return; }
+      debounceTimer = setTimeout(function(){
+        fetch('/api/seating-names?q=' + encodeURIComponent(q))
+          .then(function(r){ return r.json(); })
+          .then(function(data){ showNames(data.names || []); })
+          .catch(function(){ hideBox(); });
+      }, 150);
+    });
+    inputEl.addEventListener('blur', function(){ setTimeout(hideBox, 150); });
+  }
 
   // ---------- Attending toggle ----------
   var guestCountField = document.getElementById('guestCountField');
@@ -642,6 +689,51 @@
   var guestsSelect = document.getElementById('guests');
   var partyNamesField = document.getElementById('partyNamesField');
   var partyNamesList = document.getElementById('partyNamesList');
+  var nameLookupMsg = document.getElementById('nameLookupMsg');
+
+  // Only names already on Annie & Jay's guest list may RSVP. Looking a name
+  // up also tells us how many guests that invitation is allowed to bring,
+  // which caps the "Number of guests" dropdown below.
+  var currentMaxGuests = 1;
+  var lastLookedUpName = '';
+
+  function rebuildGuestsSelect(max){
+    var previous = guestsSelect.value;
+    var html = '<option value="1">Just me</option>';
+    for (var i = 2; i <= max; i++){
+      html += '<option value="' + i + '">' + i + '</option>';
+    }
+    guestsSelect.innerHTML = html;
+    guestsSelect.value = (parseInt(previous, 10) <= max) ? previous : '1';
+  }
+
+  function lookupPrimaryName(value){
+    var v = String(value || '').trim();
+    if (!v){
+      nameLookupMsg.hidden = true;
+      currentMaxGuests = 1;
+      rebuildGuestsSelect(1);
+      renderPartyNameFields();
+      return;
+    }
+    if (v === lastLookedUpName) return;
+    lastLookedUpName = v;
+    fetch('/api/guest-lookup?name=' + encodeURIComponent(v))
+      .then(function(r){ return r.json(); })
+      .then(function(data){
+        if (data.found){
+          nameLookupMsg.hidden = true;
+          currentMaxGuests = data.maxGuests || 1;
+        } else {
+          nameLookupMsg.hidden = false;
+          nameLookupMsg.textContent = "We couldn't find this name on our guest list. Please check the spelling, or reach out to Annie & Jay if you think this is a mistake.";
+          currentMaxGuests = 1;
+        }
+        rebuildGuestsSelect(currentMaxGuests);
+        renderPartyNameFields();
+      })
+      .catch(function(){ /* fail quiet — the server still validates on submit */ });
+  }
 
   // Show one name field per additional guest beyond the person filling out
   // the form (headcount - 1), preserving anything already typed if the
@@ -658,9 +750,10 @@
     var html = '';
     for (var i = 0; i < count; i++){
       var val = (existing[i] || '').replace(/"/g, '&quot;');
-      html += '<input type="text" class="party-name-input" placeholder="Guest ' + (i + 2) + '’s name" value="' + val + '" autocomplete="off" />';
+      html += '<div class="name-autocomplete"><input type="text" class="party-name-input" placeholder="Guest ' + (i + 2) + '’s name" value="' + val + '" autocomplete="off" /></div>';
     }
     partyNamesList.innerHTML = html;
+    Array.prototype.slice.call(partyNamesList.querySelectorAll('.party-name-input')).forEach(attachGuestAutocomplete);
   }
   guestsSelect.addEventListener('change', renderPartyNameFields);
 

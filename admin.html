@@ -75,7 +75,8 @@
   .row .msg{ flex-basis:100%; font-size:.85rem; color:var(--ink-soft); font-style:italic; }
   .row .when{ font-size:.72rem; color:var(--ink-soft); white-space:nowrap; }
   .row .table-badge{ font-size:.78rem; color:var(--ink-soft); white-space:nowrap; }
-  .row input[type="text"].table-input{ width:80px; padding:6px 8px; font-size:.85rem; }
+  .row input[type="text"].table-input, .row input[type="number"].table-input{ width:80px; padding:6px 8px; font-size:.85rem; }
+  .row input.max-guests-input{ width:56px; }
   .empty{ text-align:center; color:var(--ink-soft); padding:24px 0; font-style:italic; }
   .err{ color:var(--bad); font-size:.85rem; margin-top:8px; }
   .ok{ color:var(--good); font-size:.85rem; margin-top:8px; }
@@ -108,7 +109,7 @@
   <!-- ---------------- Seating & QR codes ---------------- -->
   <div class="panel">
     <h2>Seating List &amp; QR Codes</h2>
-    <p class="desc">Upload your Excel seating chart (columns "Name" and "Table"), or add guests one at a time. Each guest gets a personal QR code that shows their table and the program when scanned — no typing needed.</p>
+    <p class="desc">This list is the guest list — only names on it can RSVP. Upload your Excel seating chart (columns "Name", "Table", and optionally "Guests" for how many each invitation allows), or add guests one at a time. Each guest gets a personal QR code that shows their table and the program when scanned — no typing needed.</p>
 
     <div class="field">
       <label for="seatFile">Upload seating list (.xlsx)</label>
@@ -127,6 +128,10 @@
       <div class="field" style="flex:0 0 110px;">
         <label for="seatTable">Table</label>
         <input type="text" id="seatTable" placeholder="e.g. 5" />
+      </div>
+      <div class="field" style="flex:0 0 110px;">
+        <label for="seatMaxGuests">Guests allowed</label>
+        <input type="number" id="seatMaxGuests" min="1" max="20" placeholder="1" />
       </div>
     </div>
     <button id="seatAddBtn" class="ghost">Add / Update Guest</button>
@@ -262,6 +267,7 @@
       return '<div class="row" data-id="' + s.id + '">' +
         '<span class="name">' + esc(s.name) + '</span>' +
         '<input type="text" class="table-input" value="' + esc(s.table || '') + '" placeholder="Table" />' +
+        '<input type="number" class="table-input max-guests-input" min="1" max="20" value="' + esc(s.maxGuests || 1) + '" title="Guests allowed" />' +
         '<button class="ghost save-seat-btn" type="button">Save</button>' +
         '<a class="qr-link" href="/api/qr/' + s.id + '" target="_blank" rel="noopener">View QR</a>' +
         '<a class="qr-link" href="/admin/qr-print?q=' + encodeURIComponent(s.name) + '" target="_blank" rel="noopener">Print QR Card</a>' +
@@ -289,10 +295,11 @@
     if (e.target.classList.contains('save-seat-btn')){
       var name = row.querySelector('.name').textContent;
       var table = row.querySelector('.table-input').value;
+      var maxGuests = row.querySelector('.max-guests-input').value;
       e.target.disabled = true; e.target.textContent = 'Saving…';
       fetch('/api/admin/seating', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: name, table: table })
+        body: JSON.stringify({ name: name, table: table, maxGuests: maxGuests })
       }).then(function(r){ return r.json(); }).then(function(){
         e.target.disabled = false; e.target.textContent = 'Saved ✓';
         setTimeout(function(){ e.target.textContent = 'Save'; }, 1500);
@@ -311,15 +318,17 @@
     var msgEl = document.getElementById('seatAddMsg');
     var name = document.getElementById('seatName').value.trim();
     var table = document.getElementById('seatTable').value.trim();
+    var maxGuests = document.getElementById('seatMaxGuests').value.trim();
     if (!name){ msgEl.innerHTML = '<p class="err">Please enter a name.</p>'; return; }
     fetch('/api/admin/seating', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: name, table: table })
+      body: JSON.stringify({ name: name, table: table, maxGuests: maxGuests })
     }).then(function(r){ return r.json(); }).then(function(data){
       if (!data.ok){ msgEl.innerHTML = '<p class="err">' + esc(data.error || 'Something went wrong.') + '</p>'; return; }
       msgEl.innerHTML = '<p class="ok">Saved ' + esc(name) + '.</p>';
       document.getElementById('seatName').value = '';
       document.getElementById('seatTable').value = '';
+      document.getElementById('seatMaxGuests').value = '';
       loadSeating();
     }).catch(function(){
       msgEl.innerHTML = '<p class="err">Network hiccup — please try again.</p>';

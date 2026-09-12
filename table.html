@@ -34,13 +34,19 @@
     background:var(--paper); border:1px solid var(--line); border-radius:10px;
     padding:26px 22px; margin-bottom:22px; text-align:center;
   }
-  .greeting{ font-size:1.15rem; margin:0 0 6px; }
-  .table-num{
-    font-family:'Cormorant Garamond', serif; font-weight:600; color:var(--rust);
-    font-size:clamp(2.6rem, 14vw, 3.6rem); line-height:1.1; margin:6px 0;
-  }
-  .table-label{ font-size:.8rem; letter-spacing:.14em; text-transform:uppercase; color:var(--ink-soft); }
+  .greeting{ font-size:1.15rem; margin:0 0 14px; }
   .hint{ font-size:1rem; color:var(--ink-soft); margin-top:8px; }
+
+  .party-list{ display:flex; flex-direction:column; gap:14px; }
+  .party-member{
+    background:var(--ivory); border:1px solid var(--line); border-radius:8px;
+    padding:16px 18px; text-align:left;
+  }
+  .pm-row{ display:flex; align-items:baseline; justify-content:space-between; gap:10px; flex-wrap:wrap; }
+  .pm-name{ font-family:'Cormorant Garamond', Georgia, serif; font-weight:600; font-size:1.25rem; }
+  .pm-table{ font-family:'Cormorant Garamond', serif; font-weight:600; color:var(--rust); font-size:1.3rem; white-space:nowrap; }
+  .pm-table.unassigned{ font-family:'Jost', sans-serif; font-weight:400; font-size:.85rem; color:var(--ink-soft); }
+  .pm-checkin-status{ margin:10px 0 0; font-size:1rem; font-weight:600; color:var(--olive); }
 
   .searchcard input[type="text"]{
     width:100%; font-family:'Jost', sans-serif; font-size:1.15rem; padding:14px 16px;
@@ -74,16 +80,13 @@
   .backlink{ display:block; text-align:center; margin-top:26px; color:var(--ink-soft); font-size:.95rem; }
   .backlink a{ color:var(--rust); }
 
-  .checkin{ margin-top:20px; padding-top:20px; border-top:1px solid var(--line); }
   .checkin-btn{
-    display:inline-block; width:100%; padding:14px; border-radius:8px; border:1px solid var(--olive);
-    background:var(--olive); color:#fff8ee; font-family:'Jost', sans-serif; font-size:1.05rem;
+    display:inline-block; width:100%; margin-top:12px; padding:12px; border-radius:8px; border:1px solid var(--olive);
+    background:var(--olive); color:#fff8ee; font-family:'Jost', sans-serif; font-size:1rem;
     cursor:pointer;
   }
   .checkin-btn:disabled{ opacity:.6; }
-  .checkin-msg{ margin-top:12px; font-size:.95rem; color:var(--ink-soft); line-height:1.5; }
-  .checkin-confirmed{ font-size:1.1rem; font-weight:600; color:var(--olive); margin:0; }
-  .checkin-confirmed-sub{ font-size:.85rem; color:var(--ink-soft); margin:6px 0 0; }
+  .checkin-msg{ margin-top:10px; font-size:.9rem; color:var(--ink-soft); line-height:1.5; }
 </style>
 </head>
 <body>
@@ -109,61 +112,75 @@
 </div>
 
 <script>
+  function esc(s){ return String(s == null ? '' : s).replace(/</g, '&lt;'); }
+
   function fmtTable(t){
     if (!t) return null;
     return /^\d+$/.test(t) ? ('Table ' + t) : t;
   }
 
-  function checkinBlockHtml(checkedIn){
-    if (checkedIn){
-      return '<div class="checkin">' +
-        '<p class="checkin-confirmed">&#10003; You\'re checked in!</p>' +
-        '<p class="checkin-confirmed-sub">Welcome — enjoy the celebration.</p>' +
-        '</div>';
-    }
-    return '<div class="checkin" id="checkinBlock">' +
-      '<button type="button" class="checkin-btn" id="checkinBtn">Check In</button>' +
-      '<p class="checkin-msg" id="checkinMsg"></p>' +
+  // One QR code (or one name search) shows the WHOLE party together — the
+  // person plus anyone they named as additional guests on their RSVP —
+  // each with their own table number and their own Check In control.
+  function renderPartyMember(m){
+    var big = fmtTable(m.table);
+    var tableHtml = big
+      ? '<span class="pm-table">' + esc(big) + '</span>'
+      : '<span class="pm-table unassigned">No table yet</span>';
+    var checkinHtml = m.checkedIn
+      ? '<p class="pm-checkin-status">&#10003; Checked in</p>'
+      : '<button type="button" class="checkin-btn pm-checkin-btn" data-id="' + esc(m.id) + '">Check In</button>' +
+        '<p class="checkin-msg" data-msg-for="' + esc(m.id) + '"></p>';
+    return '<div class="party-member">' +
+      '<div class="pm-row"><span class="pm-name">' + esc(m.name) + '</span>' + tableHtml + '</div>' +
+      checkinHtml +
       '</div>';
   }
 
-  function wireCheckinButton(id){
-    var btn = document.getElementById('checkinBtn');
-    if (!btn) return;
-    btn.addEventListener('click', function(){
-      btn.disabled = true; btn.textContent = 'Checking in…';
-      fetch('/api/checkin/' + encodeURIComponent(id), { method: 'POST' })
-        .then(function(r){ return r.json().then(function(data){ return { ok: r.ok, data: data }; }); })
-        .then(function(res){
-          var block = document.getElementById('checkinBlock');
-          if (res.ok && res.data.checkedIn){
-            block.innerHTML =
-              '<p class="checkin-confirmed">&#10003; You\'re checked in!</p>' +
-              '<p class="checkin-confirmed-sub">Welcome — enjoy the celebration.</p>';
-          } else {
-            btn.disabled = false; btn.textContent = 'Check In';
-            document.getElementById('checkinMsg').textContent =
-              res.data.error || 'Something went wrong — please try again.';
-          }
-        }).catch(function(){
-          btn.disabled = false; btn.textContent = 'Check In';
-          document.getElementById('checkinMsg').textContent = 'Network hiccup — please try again in a moment.';
-        });
+  function showResult(data){
+    var card = document.getElementById('resultCard');
+    var party = (data.party && data.party.length) ? data.party : [{ id: data.id, name: data.name, table: data.table, checkedIn: data.checkedIn }];
+    var heading = party.length > 1
+      ? '<p class="greeting">Welcome! Here\'s your party</p>'
+      : '<p class="greeting">Welcome, ' + esc(data.name) + '!</p>';
+    card.innerHTML = heading + '<div class="party-list">' + party.map(renderPartyMember).join('') + '</div>';
+    card.hidden = false;
+  }
+
+  // Re-run whichever lookup produced the result currently on screen — used
+  // to refresh everyone's status after any one person in the party checks
+  // in, without hand-patching the DOM.
+  var lastLookup = null; // { type: 'id'|'name', value }
+  function refreshResult(){
+    if (!lastLookup) return;
+    var req = lastLookup.type === 'id'
+      ? fetch('/api/table/' + encodeURIComponent(lastLookup.value))
+      : fetch('/api/table?name=' + encodeURIComponent(lastLookup.value));
+    req.then(function(r){ return r.json(); }).then(function(data){
+      if (data.found) showResult(data);
     });
   }
 
-  function showResult(name, table, id, checkedIn){
-    var card = document.getElementById('resultCard');
-    var big = fmtTable(table);
-    card.innerHTML =
-      '<p class="greeting">Welcome, ' + name + '!</p>' +
-      (big
-        ? '<p class="hint" style="margin-top:0;">Please be seated at</p><p class="table-num">' + big + '</p><p class="table-label">Your Table</p>'
-        : '<p class="hint">Your table assignment will be posted here soon — please check back or ask Annie or Jay.</p>') +
-      (id ? checkinBlockHtml(checkedIn) : '');
-    card.hidden = false;
-    if (id) wireCheckinButton(id);
-  }
+  document.getElementById('resultCard').addEventListener('click', function(e){
+    var btn = e.target.closest('.pm-checkin-btn');
+    if (!btn) return;
+    var id = btn.getAttribute('data-id');
+    btn.disabled = true; btn.textContent = 'Checking in…';
+    var msgEl = document.querySelector('.checkin-msg[data-msg-for="' + id + '"]');
+    fetch('/api/checkin/' + encodeURIComponent(id), { method: 'POST' })
+      .then(function(r){ return r.json().then(function(data){ return { ok: r.ok, data: data }; }); })
+      .then(function(res){
+        if (res.ok && res.data.checkedIn){
+          refreshResult();
+        } else {
+          btn.disabled = false; btn.textContent = 'Check In';
+          if (msgEl) msgEl.textContent = (res.data && res.data.error) || 'Something went wrong — please try again.';
+        }
+      }).catch(function(){
+        btn.disabled = false; btn.textContent = 'Check In';
+        if (msgEl) msgEl.textContent = 'Network hiccup — please try again in a moment.';
+      });
+  });
 
   function showNotFound(msg, candidates){
     var card = document.getElementById('searchCard');
@@ -199,7 +216,8 @@
       if (data.found){
         document.getElementById('searchCard').hidden = true;
         msgEl.textContent = '';
-        showResult(data.name, data.table, data.id, data.checkedIn);
+        lastLookup = { type: 'name', value: name };
+        showResult(data);
       } else if (data.multiple && data.multiple.length){
         showNotFound('A few guests match that name — please pick yours:', data.multiple);
       } else {
@@ -227,7 +245,8 @@
   if (personalId){
     fetch('/api/table/' + encodeURIComponent(personalId)).then(function(r){ return r.json(); }).then(function(data){
       if (data.found){
-        showResult(data.name, data.table, data.id, data.checkedIn);
+        lastLookup = { type: 'id', value: personalId };
+        showResult(data);
       } else {
         document.getElementById('searchCard').hidden = false;
         showNotFound("We couldn't match this QR code. Please type your name instead:");

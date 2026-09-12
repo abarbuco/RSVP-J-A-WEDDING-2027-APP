@@ -428,13 +428,13 @@
       <div class="tile"><span class="num" id="cd-secs">00</span><span class="unit">Secs</span></div>
     </div>
     <p class="thank-you-msg" id="thankYouMsg" hidden>Thank you for celebrating with us! &#10084;<br />&mdash; Annie &amp; Jay
-      <span class="thank-you-sub">This site stays up as our wedding memory — the photos are always here to download.</span>
+      <span class="thank-you-sub">This site stays up as our memory — photos are always here.</span>
     </p>
   </section>
 
   <section class="card section reveal" id="updates">
     <h2>What's Happening</h2>
-    <p class="sub">Wedding news, your table &amp; program, and photos from the day — all in one place.</p>
+    <p class="sub">News, your table, program, and photos — all here.</p>
 
     <h3 class="hub-h3">Latest News</h3>
     <div class="updates-list" id="updatesList"><p class="updates-empty">No updates yet — check back closer to the date.</p></div>
@@ -444,16 +444,16 @@
     <div class="hub-grid">
       <div>
         <h3 class="hub-h3">Find Your Table &amp; Program</h3>
-        <p class="hub-sub">Already RSVP'd? Look yourself up by name — or upload a photo of your QR code — to see your table number, check in, and the wedding program.</p>
-        <p class="closed-note" id="findTableClosedNote" hidden>Thank you for celebrating with us! Table lookups are closed now, but photos are still here to browse and download.</p>
+        <p class="hub-sub">Already RSVP'd? Look up your table, check in, and see the program.</p>
+        <p class="closed-note" id="findTableClosedNote" hidden>Thank you for celebrating with us! Table lookups are closed — photos are still here.</p>
         <a class="btn-lg hub-action-btn" href="/table" id="findTableBtn">Find My Table</a>
       </div>
 
       <div>
         <h3 class="hub-h3">Share Your Photos</h3>
-        <p class="hub-sub">Snapped something special? Add it here so everyone can see it right away.</p>
-        <p class="hub-note">Photos are also saved to our <a href="https://drive.google.com/drive/folders/1bW2v_oK0EhicjtXpN5mHZeFi5qUTXRqa?usp=drive_link" target="_blank" rel="noopener">Google Drive album</a> the next day.</p>
-        <p class="closed-note" id="addPhotoClosedNote" hidden>Thank you for sharing your memories! Uploads are closed now, but every photo is still here to view and download.</p>
+        <p class="hub-sub">Snap something special? Add it here for everyone to see.</p>
+        <p class="hub-note">Photos also go to our <a href="https://drive.google.com/drive/folders/1bW2v_oK0EhicjtXpN5mHZeFi5qUTXRqa?usp=drive_link" target="_blank" rel="noopener">Google Drive album</a> the next day — you can add videos there too.</p>
+        <p class="closed-note" id="addPhotoClosedNote" hidden>Thank you for sharing! Uploads are closed — photos are still here.</p>
         <div class="photo-gallery" id="photoGallery"><p class="photo-gallery-empty">Loading…</p></div>
         <div class="photo-gallery-nav" id="photoGalleryNav" hidden>
           <button type="button" id="photoPrevBtn" aria-label="Previous photos">&larr;</button>
@@ -470,7 +470,7 @@
 
   <section class="card section reveal" id="details">
     <h2>Ceremony &amp; Reception</h2>
-    <p class="sub">One venue, one afternoon — please plan to stay for both.</p>
+    <p class="sub">One venue, one afternoon — stay for both.</p>
     <div class="details-grid">
       <div class="detail-card">
         <h3>The Venue</h3>
@@ -522,10 +522,10 @@
             <figcaption>Filipiniana</figcaption>
           </figure>
         </div>
-        <p>Barong and Filipiniana silhouettes always suit the mood — but come in whatever colors feel like <em>you</em>. Our earthy palette is just inspiration, not a rulebook; we want our guests to be creative. The one ask: kindly save white for the bride.</p>
+        <p>Barong or Filipiniana, any color you like — our palette is just inspiration, not a rule. Just please save white for the bride.</p>
       </div>
     </div>
-    <p class="adults-note">With so much love, this will be an adults-only celebration. We truly appreciate your understanding — it's a wonderful excuse for a date night, and we can't wait to celebrate with you.</p>
+    <p class="adults-note">This is an adults-only celebration. Thanks for understanding — enjoy the date night!</p>
   </section>
 
   <section class="card section reveal">
@@ -542,10 +542,10 @@
 
   <section class="card section reveal" id="rsvp">
     <h2>RSVP</h2>
-    <p class="sub">Kindly respond at your earliest so we can plan the celebration. <em id="rsvpDeadlineNote">(RSVP deadline to be announced.)</em></p>
+    <p class="sub">Please respond soon so we can plan. <em id="rsvpDeadlineNote">(RSVP deadline to be announced.)</em></p>
     <a class="btn-lg" href="/rsvp" id="rsvpBtn">RSVP Now</a>
-    <p class="rsvp-cta-hint" id="rsvpCtaHint">Takes about a minute. You can add your whole party in one go.</p>
-    <p class="closed-note" id="rsvpClosedNote" hidden>Thank you to everyone who responded! RSVP is closed now — please message us directly if anything's changed.</p>
+    <p class="rsvp-cta-hint" id="rsvpCtaHint">Takes a minute — add your whole party at once.</p>
+    <p class="closed-note" id="rsvpClosedNote" hidden>Thank you for responding! RSVP is closed — message us if anything's changed.</p>
   </section>
 
   <div class="trim footer-trim" aria-hidden="true"></div>
@@ -553,7 +553,7 @@
   <footer>
     <p class="sign">Annie &amp; Jay</p>
     <p class="tag">#AJCloseTheGap</p>
-    <p class="fine">We can't wait to celebrate with you.<br/>For questions, please reach out to Katrina Simbulas, our wedding coordinator, via WhatsApp at <a href="https://wa.me/639175142402">+63 917 514 2402</a>.</p>
+    <p class="fine">Can't wait to celebrate with you! Questions? WhatsApp Katrina at <a href="https://wa.me/639175142402">+63 917 514 2402</a>.</p>
     <a href="/admin" class="admin-dot">&#128274; Admin</a>
   </footer>
 
@@ -840,6 +840,14 @@
     var total = files.length;
     var succeeded = 0;
     var firstError = null;
+    var startChain = Promise.resolve();
+
+    if (total >= 10){
+      msgEl.textContent = 'That\'s a lot of photos! Tip: for 10 or more, our Google Drive album is quicker.';
+      startChain = startChain.then(function(){
+        return new Promise(function(resolve){ setTimeout(resolve, 1800); });
+      });
+    }
 
     files.reduce(function(chain, file, i){
       return chain.then(function(){
@@ -850,7 +858,7 @@
           if (!firstError) firstError = err.message;
         });
       });
-    }, Promise.resolve()).then(function(){
+    }, startChain).then(function(){
       if (succeeded > 0) loadPhotoGallery(true);
       if (succeeded === total){
         msgEl.className = 'photo-msg';

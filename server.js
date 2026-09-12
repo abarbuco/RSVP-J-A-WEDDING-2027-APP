@@ -233,15 +233,24 @@ app.post("/api/admin-logout", (req, res) => {
   res.json({ ok: true });
 });
 
+// Guest-facing pages get edited and redeployed often, and browsers (mobile
+// Safari especially) have repeatedly kept showing a stale cached copy after
+// a deploy, confusing "did my change actually go live?" testing. Sending
+// these with no-store means every visit always fetches the current file.
+function sendHtmlNoCache(res, filename) {
+  res.set("Cache-Control", "no-store");
+  res.sendFile(path.join(__dirname, filename));
+}
+
 // The page lives at the repo root (index.html next to this file).
 app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "index.html"));
+  sendHtmlNoCache(res, "index.html");
 });
 
 // The RSVP form now lives on its own page, linked from a big "RSVP Now"
 // button on the homepage, so the homepage itself can stay short and simple.
 app.get("/rsvp", (req, res) => {
-  res.sendFile(path.join(__dirname, "rsvp.html"));
+  sendHtmlNoCache(res, "rsvp.html");
 });
 
 // Vendored locally (not loaded from a CDN) so the "upload your QR code
@@ -365,10 +374,10 @@ app.get("/api/rsvps", (req, res) => {
 // the day's program with no typing at all. A plain /table page (name
 // search) is kept as a manual fallback.
 app.get("/table", (req, res) => {
-  res.sendFile(path.join(__dirname, "table.html"));
+  sendHtmlNoCache(res, "table.html");
 });
 app.get("/table/:id", (req, res) => {
-  res.sendFile(path.join(__dirname, "table.html"));
+  sendHtmlNoCache(res, "table.html");
 });
 
 // Public: a guest's own personal QR code, e.g. shown right after they RSVP.
@@ -529,27 +538,27 @@ app.get("/api/program", (req, res) => {
 // plain login page instead — same URL either way, nothing to remember.
 app.get("/admin", (req, res) => {
   if (!isAdminAuthed(req)) {
-    return res.sendFile(path.join(__dirname, "admin-login.html"));
+    return sendHtmlNoCache(res, "admin-login.html");
   }
-  res.sendFile(path.join(__dirname, "admin.html"));
+  sendHtmlNoCache(res, "admin.html");
 });
 
 // A simple, big-text, search-only view for ushers/coordinators at the door
 // on the wedding day — same password as the rest of admin, no editing tools.
 app.get("/admin/checkin", (req, res) => {
   if (!isAdminAuthed(req)) {
-    return res.sendFile(path.join(__dirname, "admin-login.html"));
+    return sendHtmlNoCache(res, "admin-login.html");
   }
-  res.sendFile(path.join(__dirname, "admin-checkin.html"));
+  sendHtmlNoCache(res, "admin-checkin.html");
 });
 
 // A printable sheet of every guest's personal QR code (name + QR + table),
 // for printing onto invitations or using as table/escort cards.
 app.get("/admin/qr-print", (req, res) => {
   if (!isAdminAuthed(req)) {
-    return res.sendFile(path.join(__dirname, "admin-login.html"));
+    return sendHtmlNoCache(res, "admin-login.html");
   }
-  res.sendFile(path.join(__dirname, "admin-qr-print.html"));
+  sendHtmlNoCache(res, "admin-qr-print.html");
 });
 
 app.get("/api/admin/rsvps", (req, res) => {

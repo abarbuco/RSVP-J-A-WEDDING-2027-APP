@@ -223,6 +223,8 @@
   .btn:hover{ background:var(--rust); color:#fff8ee; }
   .btn.solid{ background:var(--rust); color:#fff8ee; }
   .btn.solid:hover{ background:var(--rust-deep); border-color:var(--rust-deep); }
+  .cal-buttons{ display:flex; flex-wrap:wrap; gap:10px; }
+  .cal-buttons .btn{ margin-top:14px; }
 
   .attire-icons{ display:flex; gap:22px; margin:12px 0 16px; }
   .attire-icons figure{ margin:0; text-align:center; }
@@ -242,6 +244,21 @@
   .field{ margin-bottom:16px; }
   .field label{ display:block; font-size:.8rem; letter-spacing:.05em; text-transform:uppercase; color:var(--ink-soft); margin-bottom:6px; }
   .field-hint{ margin:6px 2px 0; font-size:.78rem; color:var(--ink-soft); line-height:1.5; }
+  .name-autocomplete{ position:relative; }
+  .name-suggestions{
+    position:absolute; left:0; right:0; top:calc(100% + 4px); z-index:20;
+    background:var(--paper); border:1px solid var(--line); border-radius:8px;
+    box-shadow:var(--shadow); overflow:hidden; max-height:260px; overflow-y:auto;
+  }
+  .name-suggestions button{
+    display:block; width:100%; text-align:left; padding:14px 16px; font-size:1rem;
+    font-family:'Jost', sans-serif; color:var(--ink); background:none; border:0;
+    border-bottom:1px solid var(--line); cursor:pointer;
+  }
+  .name-suggestions button:last-child{ border-bottom:0; }
+  .name-suggestions button:hover, .name-suggestions button:active, .name-suggestions button.active{
+    background:rgba(122,74,46,.1);
+  }
   .field input[type="text"], .field textarea, .field select{
     width:100%;
     font-family:'Jost', sans-serif;
@@ -388,7 +405,13 @@
         <p><strong>Plaza Ibarra</strong></p>
         <p>77 Timog Ave, Diliman<br/>Quezon City, 1103 Metro Manila<br/>Philippines</p>
         <p>4:00 PM onwards</p>
-        <a class="btn" id="calendarBtn" href="#">Add to calendar ↓</a>
+        <div class="cal-buttons">
+          <a class="btn" id="googleCalBtn" target="_blank" rel="noopener"
+            href="https://calendar.google.com/calendar/render?action=TEMPLATE&text=Annie%20%26%20Jay's%20Wedding%20%E2%80%94%20%23AJCloseTheGap&dates=20270221T080000Z/20270221T130000Z&details=Ceremony%20and%20reception%20for%20Annie%20Queen%20C.%20Barbuco%20%26%20Jay%20B.%20Josef.%20%23AJCloseTheGap&location=Plaza%20Ibarra%2C%2077%20Timog%20Ave%2C%20Diliman%2C%20Quezon%20City%2C%201103%20Metro%20Manila%2C%20Philippines">
+            Add to Google Calendar ↗
+          </a>
+          <a class="btn" id="calendarBtn" href="#">Add to iPhone / Outlook ↓</a>
+        </div>
       </div>
       <div class="detail-card">
         <h3>Dress Code</h3>
@@ -437,10 +460,10 @@
     <h2>Getting There</h2>
     <p class="sub">Plaza Ibarra, Timog Avenue, Diliman, Quezon City</p>
     <iframe class="map-frame" title="Map to Plaza Ibarra" loading="lazy"
-      src="https://www.google.com/maps?q=14.6342705,121.038853&z=17&output=embed"
+      src="https://www.openstreetmap.org/export/embed.html?bbox=121.028853%2C14.6292705%2C121.048853%2C14.6392705&layer=mapnik&marker=14.6342705%2C121.038853"
       referrerpolicy="no-referrer-when-downgrade"></iframe>
     <a class="btn" style="margin-top:14px" target="_blank" rel="noopener"
-      href="https://www.google.com/maps/place/Plaza+Ibarra/@14.6342705,121.038853,17z/data=!4m6!3m5!1s0x3397b7ade1702d0d:0x370020cf61876292!8m2!3d14.6342705!4d121.038853">
+      href="https://www.google.com/maps/search/?api=1&query=Plaza+Ibarra%2C+77+Timog+Ave%2C+Diliman%2C+Quezon+City%2C+1103+Metro+Manila%2C+Philippines">
       Get directions ↗
     </a>
   </section>
@@ -452,8 +475,11 @@
     <form id="rsvpForm" novalidate>
       <div class="field">
         <label for="name">Your name</label>
-        <input type="text" id="name" name="name" placeholder="e.g. Maria Santos" autocomplete="name" required />
-        <p class="field-hint">Please use your full name exactly as it appears on your invitation — this is how we match you to your table.</p>
+        <div class="name-autocomplete">
+          <input type="text" id="name" name="name" placeholder="Start typing your name…" autocomplete="off" required />
+          <div class="name-suggestions" id="nameSuggestions" hidden></div>
+        </div>
+        <p class="field-hint">Start typing and tap your name if it appears — that's the easiest way to match you to your table.</p>
       </div>
 
       <div class="field">
@@ -530,6 +556,57 @@
   }
   tick();
   setInterval(tick, 1000);
+
+  // ---------- Name autocomplete (suggestions from the seating list) ----------
+  (function(){
+    var nameInput = document.getElementById('name');
+    var box = document.getElementById('nameSuggestions');
+    var debounceTimer = null;
+    var activeIndex = -1;
+
+    function hideBox(){
+      box.hidden = true;
+      box.innerHTML = '';
+      activeIndex = -1;
+    }
+
+    function showNames(names){
+      if (!names.length){ hideBox(); return; }
+      box.innerHTML = '';
+      names.forEach(function(n){
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.textContent = n;
+        btn.addEventListener('click', function(){
+          nameInput.value = n;
+          hideBox();
+        });
+        box.appendChild(btn);
+      });
+      box.hidden = false;
+    }
+
+    nameInput.addEventListener('input', function(){
+      var q = nameInput.value.trim();
+      clearTimeout(debounceTimer);
+      if (q.length < 2){ hideBox(); return; }
+      debounceTimer = setTimeout(function(){
+        fetch('/api/seating-names?q=' + encodeURIComponent(q))
+          .then(function(r){ return r.json(); })
+          .then(function(data){ showNames(data.names || []); })
+          .catch(function(){ hideBox(); });
+      }, 150);
+    });
+
+    // Hide on outside click; a small delay on blur lets a click on a
+    // suggestion register first.
+    nameInput.addEventListener('blur', function(){
+      setTimeout(hideBox, 150);
+    });
+    document.addEventListener('click', function(e){
+      if (e.target !== nameInput && !box.contains(e.target)) hideBox();
+    });
+  })();
 
   // ---------- Attending toggle ----------
   var guestCountField = document.getElementById('guestCountField');
@@ -615,6 +692,8 @@
         }
 
         form.reset();
+        var nameSuggestBox = document.getElementById('nameSuggestions');
+        if (nameSuggestBox) { nameSuggestBox.hidden = true; nameSuggestBox.innerHTML = ''; }
         guestCountField.style.display = 'none';
         labelYes.classList.remove('active'); labelNo.classList.remove('active');
         loadGuestWall();

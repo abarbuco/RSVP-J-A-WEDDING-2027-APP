@@ -275,6 +275,24 @@ app.get("/api/table", (req, res) => {
   return res.json({ found: false, multiple: [] });
 });
 
+// Name suggestions for the RSVP form's autocomplete, sourced from the
+// Excel seating list — helps guests type their name the same way it's
+// spelled on the sheet, so their RSVP links to the right table. Purely a
+// convenience: the field stays free-text, this is not a required match.
+app.get("/api/seating-names", (req, res) => {
+  const q = normName(req.query.q);
+  if (!q || q.length < 2) return res.json({ names: [] });
+  const list = readSeating();
+  const startsWith = [];
+  const contains = [];
+  list.forEach((s) => {
+    const n = normName(s.name);
+    if (n.startsWith(q)) startsWith.push(s.name);
+    else if (n.includes(q)) contains.push(s.name);
+  });
+  res.json({ names: startsWith.concat(contains).slice(0, 8) });
+});
+
 // Personal lookup by the id embedded in a guest's own QR code.
 app.get("/api/table/:id", (req, res) => {
   const list = readSeating();

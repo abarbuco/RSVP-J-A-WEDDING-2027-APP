@@ -198,20 +198,30 @@
   .updates-empty{ color:var(--ink-soft); font-style:italic; text-align:center; padding:8px 0; }
 
   /* Find Your Table & Program / Share Your Photos side by side on wider
-     screens so the section doesn't run too long; stacked on phones. */
-  .hub-grid{ display:grid; grid-template-columns:1fr 1fr; gap:28px; align-items:start; }
+     screens so the section doesn't run too long; stacked on phones. Each
+     column stretches to match the taller one, and its main button is
+     pinned to the bottom (margin-top:auto) so "Find My Table" and
+     "Add Your Photo" line up on the same row no matter how much text or
+     gallery content sits above them. */
+  .hub-grid{ display:grid; grid-template-columns:1fr 1fr; gap:28px; }
   @media (max-width:560px){ .hub-grid{ grid-template-columns:1fr; gap:0; } }
-  .hub-grid > div + div{ margin-top:0; }
-  @media (max-width:560px){ .hub-grid > div:last-child{ margin-top:28px; } }
+  .hub-grid > div{ display:flex; flex-direction:column; }
+  .hub-grid > div .hub-action-btn{ margin-top:auto; } /* pins the button to the bottom of its column so both align */
+  @media (max-width:560px){
+    .hub-grid > div{ display:block; } /* auto-margin only matters in the flex layout above */
+    .hub-grid > div .photo-upload-btn{ margin-top:16px; }
+    .hub-grid > div:last-child{ margin-top:28px; }
+  }
 
   .photo-gallery{
-    display:grid; grid-template-columns:repeat(auto-fill, minmax(76px, 1fr)); gap:8px; margin-top:16px;
+    display:grid; grid-template-columns:repeat(auto-fill, minmax(76px, 1fr)); gap:8px; margin-top:0;
   }
   .photo-gallery img{
     width:100%; aspect-ratio:1/1; object-fit:cover; border-radius:6px; border:1px solid var(--line); background:var(--ivory);
   }
   .photo-gallery-empty{ color:var(--ink-soft); font-style:italic; font-size:.9rem; grid-column:1/-1; text-align:center; padding:6px 0; }
   .photo-msg{ margin-top:12px; font-size:.95rem; line-height:1.5; }
+  .photo-msg:empty{ margin-top:0; } /* keeps the button bottom-aligned with "Find My Table" when there's no message showing */
   .photo-msg.error{ color:var(--rust-deep); }
   .photo-album-link{ display:block; text-align:center; margin-top:14px; font-size:.92rem; }
   .photo-album-link a{ color:var(--rust); }
@@ -379,17 +389,17 @@
       <div>
         <h3 class="hub-h3">Find Your Table &amp; Program</h3>
         <p class="hub-sub">Already RSVP'd? Look yourself up by name — or upload a photo of your QR code — to see your table number, check in, and the wedding program.</p>
-        <a class="btn-lg" href="/table">Find My Table</a>
+        <a class="btn-lg hub-action-btn" href="/table">Find My Table</a>
       </div>
 
       <div>
         <h3 class="hub-h3">Share Your Photos</h3>
         <p class="hub-sub">Snapped something special? Add it here so everyone can see it right away.</p>
-        <label class="btn-lg" for="guestPhotoInput">Add Your Photo</label>
-        <input type="file" id="guestPhotoInput" accept="image/*" style="display:none;" />
-        <div class="photo-msg" id="guestPhotoMsg"></div>
         <div class="photo-gallery" id="photoGallery"><p class="photo-gallery-empty">Loading…</p></div>
         <p class="photo-album-link" id="photoAlbumWrap" hidden><a id="photoAlbumBtn" href="#" target="_blank" rel="noopener">View the full album &rarr;</a></p>
+        <label class="btn-lg hub-action-btn photo-upload-btn" for="guestPhotoInput">Add Your Photo</label>
+        <input type="file" id="guestPhotoInput" accept="image/*" style="display:none;" />
+        <div class="photo-msg" id="guestPhotoMsg"></div>
       </div>
     </div>
   </section>

@@ -184,7 +184,8 @@
         : '<span class="pill no">Regretfully declines</span>';
       var msg = r.message ? '<div class="msg">“' + esc(r.message) + '”</div>' : '';
       var table = '<span class="table-badge">' + (r.table ? 'Table ' + esc(r.table) : 'No table yet') + '</span>';
-      return '<div class="row"><span class="name">' + esc(r.name) + '</span>' + pill + table +
+      var qr = r.seatingId ? '<a class="qr-link" href="/api/qr/' + r.seatingId + '" target="_blank" rel="noopener">View QR</a>' : '';
+      return '<div class="row"><span class="name">' + esc(r.name) + '</span>' + pill + table + qr +
         '<span class="when">' + fmtDate(r.submittedAt) + '</span>' + msg + '</div>';
     }).join('');
   }
@@ -222,7 +223,7 @@
         '<span class="name">' + esc(s.name) + '</span>' +
         '<input type="text" class="table-input" value="' + esc(s.table || '') + '" placeholder="Table" />' +
         '<button class="ghost save-seat-btn" type="button">Save</button>' +
-        '<a class="qr-link" href="/api/admin/qr/' + s.id + '" target="_blank" rel="noopener">View / Print QR</a>' +
+        '<a class="qr-link" href="/api/qr/' + s.id + '" target="_blank" rel="noopener">View / Print QR</a>' +
         '<button class="danger remove-seat-btn" type="button">Remove</button>' +
         '</div>';
     }).join('');

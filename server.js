@@ -7,6 +7,9 @@ const XLSX = require("xlsx");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+// One shared password for the admin area — set ADMIN_PASSWORD in Railway's
+// Variables tab to change it later (no code change or GitHub upload needed).
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "AJCloseTheGap2027";
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, "data");
 const DATA_FILE = path.join(DATA_DIR, "rsvps.json");
 const UPDATES_FILE = path.join(DATA_DIR, "updates.json");
@@ -73,10 +76,52 @@ function upsertSeating(list, rawName, rawTable) {
   return { entry: list[idx], created: false };
 }
 
+// Make sure a seating record (and therefore a stable id for a QR code)
+// exists for this name, WITHOUT touching a table number that may already
+// be there (e.g. from an Excel upload done ahead of time). Used right when
+// a guest RSVPs "yes", so their personal QR code exists immediately.
+function ensureSeating(list, rawName) {
+  const name = String(rawName || "").trim().slice(0, 80);
+  const key = normName(name);
+  if (!key) return null;
+  let entry = list.find((s) => normName(s.name) === key);
+  if (!entry) {
+    entry = { id: crypto.randomUUID(), name, table: null };
+    list.push(entry);
+  }
+  return entry;
+}
+
+async function generateQrSvg(url) {
+  return QRCode.toString(url, {
+    type: "svg",
+    margin: 1,
+    color: { dark: "#2b211a", light: "#fffcf6" },
+  });
+}
+
 // --- middleware ------------------------------------------------------------
 // 8mb covers the small text payloads everywhere else plus a base64-encoded
 // seating spreadsheet upload from /admin.
 app.use(express.json({ limit: "8mb" }));
+
+// One shared password gate for the admin page and everything under
+// /api/admin — the browser's own built-in login prompt, so there's no
+// custom login page to build or break. Guests never see this: /table,
+// /api/rsvp, /api/updates, /api/program and /api/qr all stay open.
+function requireAdminPassword(req, res, next) {
+  const header = req.headers.authorization || "";
+  const [scheme, encoded] = header.split(" ");
+  if (scheme === "Basic" && encoded) {
+    const decoded = Buffer.from(encoded, "base64").toString("utf8");
+    const password = decoded.slice(decoded.indexOf(":") + 1);
+    if (password === ADMIN_PASSWORD) return next();
+  }
+  res.set("WWW-Authenticate", 'Basic realm="Wedding Admin"');
+  res.status(401).send("Password required.");
+}
+
+app.use("/api/admin", requireAdminPassword);
 
 // The page lives at the repo root (index.html next to this file).
 app.get("/", (req, res) => {
@@ -101,18 +146,31 @@ app.post("/api/rsvp", (req, res) => {
   }
 
   const entries = readAll();
+
+  // A guest who is coming gets a seating record (and so a stable id for
+  // their personal QR code) right away — the table number itself may still
+  // be blank until Annie assigns it, which the table page handles gracefully.
+  let seatingId = null;
+  if (attending === "yes") {
+    const seatingList = readSeating();
+    const seatEntry = ensureSeating(seatingList, name);
+    writeSeating(seatingList);
+    seatingId = seatEntry ? seatEntry.id : null;
+  }
+
   const entry = {
     id: crypto.randomUUID(),
     name,
     attending,
     guests,
     message,
+    seatingId,
     submittedAt: new Date().toISOString(),
   };
   entries.push(entry);
   writeAll(entries);
 
-  res.status(201).json({ ok: true, entry });
+  res.status(201).json({ ok: true, entry, seatingId });
 });
 
 app.get("/api/rsvps", (req, res) => {
@@ -133,15 +191,32 @@ app.get("/api/rsvps", (req, res) => {
   });
 });
 
-// Find-my-table — each guest's personal QR code (printed on their place
-// card / invitation) links straight to /table/:id, so scanning it shows
-// their table number and the day's program with no typing at all. A plain
-// /table page (name search) is kept as a manual fallback.
+// Find-my-table — every guest who RSVPs "yes" gets a personal QR code right
+// on the confirmation, so scanning it later shows their table number and
+// the day's program with no typing at all. A plain /table page (name
+// search) is kept as a manual fallback.
 app.get("/table", (req, res) => {
   res.sendFile(path.join(__dirname, "table.html"));
 });
 app.get("/table/:id", (req, res) => {
   res.sendFile(path.join(__dirname, "table.html"));
+});
+
+// Public: a guest's own personal QR code, e.g. shown right after they RSVP.
+app.get("/api/qr/:id", async (req, res) => {
+  const list = readSeating();
+  const entry = list.find((s) => s.id === req.params.id);
+  if (!entry) return res.status(404).send("Guest not found.");
+
+  const base = `${req.protocol}://${req.get("host")}`;
+  const url = `${base}/table/${entry.id}`;
+  try {
+    const svg = await generateQrSvg(url);
+    res.type("image/svg+xml").send(svg);
+  } catch (err) {
+    console.error("QR generation failed:", err);
+    res.status(500).send("Could not generate QR code.");
+  }
 });
 
 function findSeatingMatches(rawName) {
@@ -180,9 +255,9 @@ app.get("/api/program", (req, res) => {
   res.json({ program: readProgram() });
 });
 
-// Unlisted admin view — not linked from the public page. Shows RSVP data
-// only (name, attending status, guest count, table, message, timestamp).
-app.get("/admin", (req, res) => {
+// Admin view, now behind the shared password. Shows RSVP data, seating,
+// updates, and the program.
+app.get("/admin", requireAdminPassword, (req, res) => {
   res.sendFile(path.join(__dirname, "admin.html"));
 });
 
@@ -209,6 +284,7 @@ app.get("/api/admin/rsvps", (req, res) => {
           attending: e.attending,
           guests: e.guests,
           message: e.message,
+          seatingId: seat ? seat.id : null,
           table: seat ? seat.table || null : null,
           submittedAt: e.submittedAt,
         };
@@ -348,8 +424,8 @@ app.delete("/api/admin/program/:id", (req, res) => {
   res.json({ ok: true });
 });
 
-// A guest's personal QR code — printed on their place card / invitation.
-// Scanning it opens /table/:id directly, no typing required.
+// Admin alias of /api/qr/:id (same QR, same no-auth model) — kept so
+// existing "View / Print QR" links in /admin keep working.
 app.get("/api/admin/qr/:id", async (req, res) => {
   const list = readSeating();
   const entry = list.find((s) => s.id === req.params.id);
@@ -358,11 +434,7 @@ app.get("/api/admin/qr/:id", async (req, res) => {
   const base = `${req.protocol}://${req.get("host")}`;
   const url = `${base}/table/${entry.id}`;
   try {
-    const svg = await QRCode.toString(url, {
-      type: "svg",
-      margin: 1,
-      color: { dark: "#2b211a", light: "#fffcf6" },
-    });
+    const svg = await generateQrSvg(url);
     res.type("image/svg+xml").send(svg);
   } catch (err) {
     console.error("QR generation failed:", err);

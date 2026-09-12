@@ -266,6 +266,15 @@
   .form-msg.error{ display:block; background:rgba(122,74,46,.12); color:var(--rust-deep); }
   .form-msg.success{ display:block; background:rgba(107,111,58,.12); color:var(--olive); }
 
+  .qr-result{
+    margin-top:18px; padding:20px; text-align:center;
+    border:1px solid var(--line); border-radius:6px; background:var(--ivory);
+  }
+  .qr-result-label{ font-size:.8rem; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-soft); margin:0 0 12px; }
+  .qr-result-img{ display:block; margin:0 auto; border-radius:4px; background:var(--paper); }
+  .qr-result-hint{ margin:12px 0 0; font-size:.85rem; color:var(--ink-soft); line-height:1.5; }
+  .qr-result-hint a{ color:var(--rust); }
+
   .stats-row{ display:flex; gap:14px; margin:24px 0; flex-wrap:wrap; }
   .stat{ flex:1; min-width:120px; text-align:center; border:1px solid var(--line); border-radius:6px; padding:14px 8px; background:var(--ivory); }
   .stat .n{ font-family:'Cormorant Garamond', serif; font-size:1.8rem; font-weight:600; color:var(--rust); font-variant-numeric: tabular-nums; }
@@ -284,6 +293,11 @@
   footer .sign{ font-family:'Mrs Saint Delafield', cursive; font-size:2rem; color:var(--rust); margin-bottom:6px; }
   footer .tag{ font-family:'Cormorant Garamond', serif; font-style:italic; color:var(--gold); font-size:1.1rem; margin:8px 0 14px; }
   footer .fine{ font-size:.78rem; line-height:1.6; }
+  footer .admin-dot{
+    display:inline-block; margin-top:16px; font-size:.7rem; opacity:.28;
+    text-decoration:none; filter:grayscale(1);
+  }
+  footer .admin-dot:hover{ opacity:.7; }
 
   @media (prefers-reduced-motion: no-preference){
     .reveal{ animation: rise .7s ease both; }
@@ -461,6 +475,12 @@
       <div class="form-msg" id="formMsg" role="status"></div>
     </form>
 
+    <div class="qr-result" id="qrResult" hidden>
+      <p class="qr-result-label">Your personal QR code</p>
+      <img id="qrResultImg" class="qr-result-img" width="170" height="170" alt="Your personal QR code — scan to find your table" />
+      <p class="qr-result-hint">Save a screenshot of this, or take a photo — scan it on the day to see your table number and the wedding program. You can also just visit <a id="qrResultLink" href="#">this link</a> anytime.</p>
+    </div>
+
     <div class="weave-divider" aria-hidden="true"><span class="rule"></span></div>
 
     <div class="stats-row" id="statsRow">
@@ -479,6 +499,7 @@
     <p class="tag">#AJCloseTheGap</p>
     <p class="fine">We can't wait to celebrate with you.<br/>For questions, reach out to Annie or Jay directly.</p>
     <p class="fine" style="margin-top:10px;">Look for the QR code on your invitation to find your table and the day's program.</p>
+    <a href="/admin" class="admin-dot" aria-label="Admin">&#128274;</a>
   </footer>
 
 </div>
@@ -572,6 +593,18 @@
           ? "Thank you, " + payload.name + "! We can't wait to celebrate with you."
           : "Thank you for letting us know, " + payload.name + ". You'll be missed!";
         formMsg.className = 'form-msg success';
+
+        var qrResult = document.getElementById('qrResult');
+        if (payload.attending === 'yes' && res.data.seatingId) {
+          var qrUrl = '/api/qr/' + res.data.seatingId;
+          var tableUrl = '/table/' + res.data.seatingId;
+          document.getElementById('qrResultImg').src = qrUrl;
+          document.getElementById('qrResultLink').href = tableUrl;
+          qrResult.hidden = false;
+        } else {
+          qrResult.hidden = true;
+        }
+
         form.reset();
         guestCountField.style.display = 'none';
         labelYes.classList.remove('active'); labelNo.classList.remove('active');

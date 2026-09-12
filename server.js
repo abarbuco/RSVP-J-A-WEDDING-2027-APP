@@ -56,7 +56,7 @@ ensureFile(PROGRAM_FILE);
 ensureFile(SEATING_FILE);
 
 function normName(n) {
-  return String(n || "").trim().toLowerCase();
+  return String(n || "").trim().toLowerCase().replace(/\s+/g, " ");
 }
 
 // Add or update one seating entry by name (case-insensitive match).

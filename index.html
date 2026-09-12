@@ -241,6 +241,7 @@
   /* ---------- RSVP ---------- */
   .field{ margin-bottom:16px; }
   .field label{ display:block; font-size:.8rem; letter-spacing:.05em; text-transform:uppercase; color:var(--ink-soft); margin-bottom:6px; }
+  .field-hint{ margin:6px 2px 0; font-size:.78rem; color:var(--ink-soft); line-height:1.5; }
   .field input[type="text"], .field textarea, .field select{
     width:100%;
     font-family:'Jost', sans-serif;
@@ -452,6 +453,7 @@
       <div class="field">
         <label for="name">Your name</label>
         <input type="text" id="name" name="name" placeholder="e.g. Maria Santos" autocomplete="name" required />
+        <p class="field-hint">Please use your full name exactly as it appears on your invitation — this is how we match you to your table.</p>
       </div>
 
       <div class="field">

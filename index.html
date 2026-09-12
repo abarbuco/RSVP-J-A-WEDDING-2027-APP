@@ -124,13 +124,16 @@
     margin:0 0 6px;
   }
   .fullnames{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
     font-size:.78rem;
     letter-spacing:.08em;
     text-transform:uppercase;
     color:var(--ink-soft);
     margin:0 0 26px;
   }
-  .fullnames .amp{ color:var(--gold-soft); padding-inline:.4em; font-style:italic; text-transform:none; letter-spacing:0; }
+  .fullnames .amp{ display:block; color:var(--gold-soft); margin:2px 0; font-style:italic; text-transform:none; letter-spacing:0; }
   .save-the-date{
     font-size:clamp(1.6rem, 5vw, 2.15rem);
     letter-spacing:.06em;
@@ -362,7 +365,7 @@
 
     <p class="eyebrow">Together with their families</p>
     <h1 class="monogram">Annie &amp; Jay</h1>
-    <p class="fullnames">Annie Queen C. Barbuco <span class="amp">&amp;</span> Jay B. Josef</p>
+    <p class="fullnames"><span>Annie Queen Carlos Barbuco</span><span class="amp">&amp;</span><span>Jay Batac Josef</span></p>
     <p class="save-the-date">are joyfully <em>closing the gap</em></p>
     <p class="when">Sunday, February 21, 2027 · 4:00 in the afternoon</p>
     <span class="hashtag-chip">#AJCloseTheGap</span>
@@ -407,7 +410,7 @@
         <p>4:00 PM onwards</p>
         <div class="cal-buttons">
           <a class="btn" id="googleCalBtn" target="_blank" rel="noopener"
-            href="https://calendar.google.com/calendar/render?action=TEMPLATE&text=Annie%20%26%20Jay's%20Wedding%20%E2%80%94%20%23AJCloseTheGap&dates=20270221T080000Z/20270221T130000Z&details=Ceremony%20and%20reception%20for%20Annie%20Queen%20C.%20Barbuco%20%26%20Jay%20B.%20Josef.%20%23AJCloseTheGap&location=Plaza%20Ibarra%2C%2077%20Timog%20Ave%2C%20Diliman%2C%20Quezon%20City%2C%201103%20Metro%20Manila%2C%20Philippines">
+            href="https://calendar.google.com/calendar/render?action=TEMPLATE&text=Annie%20%26%20Jay's%20Wedding%20%E2%80%94%20%23AJCloseTheGap&dates=20270221T080000Z/20270221T130000Z&details=Ceremony%20and%20reception%20for%20Annie%20Queen%20Carlos%20Barbuco%20%26%20Jay%20Batac%20Josef.%20%23AJCloseTheGap&location=Plaza%20Ibarra%2C%2077%20Timog%20Ave%2C%20Diliman%2C%20Quezon%20City%2C%201103%20Metro%20Manila%2C%20Philippines">
             Add to Google Calendar ↗
           </a>
           <a class="btn" id="calendarBtn" href="#">Add to iPhone / Outlook ↓</a>
@@ -631,7 +634,7 @@
       "DTSTART:20270221T080000Z",
       "DTEND:20270221T130000Z",
       "SUMMARY:Annie \\& Jay's Wedding — #AJCloseTheGap",
-      "DESCRIPTION:Ceremony and reception for Annie Queen C. Barbuco \\& Jay B. Josef. #AJCloseTheGap",
+      "DESCRIPTION:Ceremony and reception for Annie Queen Carlos Barbuco \\& Jay Batac Josef. #AJCloseTheGap",
       "LOCATION:Plaza Ibarra\\, 77 Timog Ave\\, Diliman\\, Quezon City\\, 1103 Metro Manila\\, Philippines",
       "END:VEVENT","END:VCALENDAR"
     ].join("\r\n");

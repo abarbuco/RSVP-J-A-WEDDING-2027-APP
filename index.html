@@ -216,10 +216,24 @@
   .photo-gallery{
     display:grid; grid-template-columns:repeat(auto-fill, minmax(76px, 1fr)); gap:8px; margin-top:0;
   }
-  .photo-gallery img{
-    width:100%; aspect-ratio:1/1; object-fit:cover; border-radius:6px; border:1px solid var(--line); background:var(--ivory);
+  .photo-thumb{ position:relative; display:block; }
+  .photo-thumb img{
+    width:100%; aspect-ratio:1/1; object-fit:cover; border-radius:6px; border:1px solid var(--line); background:var(--ivory); display:block;
+  }
+  .photo-dl{
+    position:absolute; right:4px; bottom:4px; width:24px; height:24px; border-radius:50%;
+    background:rgba(43,33,26,.72); color:#fff8ee; font-size:.95rem; line-height:24px; text-align:center;
   }
   .photo-gallery-empty{ color:var(--ink-soft); font-style:italic; font-size:.9rem; grid-column:1/-1; text-align:center; padding:6px 0; }
+  .photo-gallery-nav{
+    display:flex; align-items:center; justify-content:center; gap:14px; margin-top:10px;
+  }
+  .photo-gallery-nav button{
+    width:38px; height:38px; border-radius:50%; border:1px solid var(--rust); background:var(--paper);
+    color:var(--rust); font-size:1.1rem; cursor:pointer; line-height:1;
+  }
+  .photo-gallery-nav button:disabled{ opacity:.35; cursor:default; }
+  .photo-gallery-nav span{ font-size:.85rem; color:var(--ink-soft); min-width:52px; text-align:center; }
   .photo-msg{ margin-top:12px; font-size:.95rem; line-height:1.5; }
   .photo-msg:empty{ margin-top:0; } /* keeps the button bottom-aligned with "Find My Table" when there's no message showing */
   .photo-msg.error{ color:var(--rust-deep); }
@@ -396,9 +410,14 @@
         <h3 class="hub-h3">Share Your Photos</h3>
         <p class="hub-sub">Snapped something special? Add it here so everyone can see it right away.</p>
         <div class="photo-gallery" id="photoGallery"><p class="photo-gallery-empty">Loading…</p></div>
+        <div class="photo-gallery-nav" id="photoGalleryNav" hidden>
+          <button type="button" id="photoPrevBtn" aria-label="Previous photos">&larr;</button>
+          <span id="photoPageLabel"></span>
+          <button type="button" id="photoNextBtn" aria-label="Next photos">&rarr;</button>
+        </div>
         <p class="photo-album-link" id="photoAlbumWrap" hidden><a id="photoAlbumBtn" href="#" target="_blank" rel="noopener">View the full album &rarr;</a></p>
-        <label class="btn-lg hub-action-btn photo-upload-btn" for="guestPhotoInput">Add Your Photo</label>
-        <input type="file" id="guestPhotoInput" accept="image/*" style="display:none;" />
+        <label class="btn-lg hub-action-btn photo-upload-btn" for="guestPhotoInput">Add Your Photos</label>
+        <input type="file" id="guestPhotoInput" accept="image/*" multiple style="display:none;" />
         <div class="photo-msg" id="guestPhotoMsg"></div>
       </div>
     </div>
@@ -566,57 +585,132 @@
   // ---------- Share Your Photos: guests upload right here, and everyone
   // sees a live gallery of the latest photos — no waiting, no separate
   // album to hunt for. ----------
-  function loadPhotoGallery(){
-    fetch('/api/guest-photos?limit=24').then(function(r){ return r.json(); }).then(function(data){
-      var grid = document.getElementById('photoGallery');
-      var photos = data.photos || [];
-      if (!photos.length){
-        grid.innerHTML = '<p class="photo-gallery-empty">No photos yet — be the first to share one!</p>';
-        return;
-      }
-      grid.innerHTML = photos.map(function(p){
-        return '<img src="' + p.imageUrl + '" alt="" loading="lazy" />';
-      }).join('');
+  // Shown 3 at a time with left/right arrows once there are more than that,
+  // rather than one long scrolling grid — keeps this column from growing
+  // taller than "Find Your Table" next to it as more guests share photos.
+  var PHOTOS_PER_PAGE = 3;
+  var galleryPhotos = [];
+  var galleryPage = 0;
+
+  function renderPhotoGalleryPage(){
+    var grid = document.getElementById('photoGallery');
+    var nav = document.getElementById('photoGalleryNav');
+    if (!galleryPhotos.length){
+      grid.innerHTML = '<p class="photo-gallery-empty">No photos yet — be the first to share one!</p>';
+      nav.hidden = true;
+      return;
+    }
+    var pageCount = Math.ceil(galleryPhotos.length / PHOTOS_PER_PAGE);
+    if (galleryPage >= pageCount) galleryPage = pageCount - 1;
+    if (galleryPage < 0) galleryPage = 0;
+    var start = galleryPage * PHOTOS_PER_PAGE;
+    var pagePhotos = galleryPhotos.slice(start, start + PHOTOS_PER_PAGE);
+
+    grid.innerHTML = pagePhotos.map(function(p){
+      return '<a class="photo-thumb" href="/api/guest-photos/' + p.id + '/download" title="Download this photo">' +
+        '<img src="' + p.imageUrl + '" alt="" loading="lazy" />' +
+        '<span class="photo-dl" aria-hidden="true">&#8595;</span>' +
+        '</a>';
+    }).join('');
+
+    if (galleryPhotos.length > PHOTOS_PER_PAGE){
+      nav.hidden = false;
+      document.getElementById('photoPageLabel').textContent = (galleryPage + 1) + ' / ' + pageCount;
+      document.getElementById('photoPrevBtn').disabled = galleryPage === 0;
+      document.getElementById('photoNextBtn').disabled = galleryPage >= pageCount - 1;
+    } else {
+      nav.hidden = true;
+    }
+  }
+
+  document.getElementById('photoPrevBtn').addEventListener('click', function(){
+    galleryPage--;
+    renderPhotoGalleryPage();
+  });
+  document.getElementById('photoNextBtn').addEventListener('click', function(){
+    galleryPage++;
+    renderPhotoGalleryPage();
+  });
+
+  function loadPhotoGallery(resetToFirstPage){
+    fetch('/api/guest-photos?limit=60').then(function(r){ return r.json(); }).then(function(data){
+      galleryPhotos = data.photos || [];
+      if (resetToFirstPage) galleryPage = 0;
+      renderPhotoGalleryPage();
     }).catch(function(){
       document.getElementById('photoGallery').innerHTML = '<p class="photo-gallery-empty">Could not load photos — please refresh.</p>';
+      document.getElementById('photoGalleryNav').hidden = true;
     });
   }
-  loadPhotoGallery();
+  loadPhotoGallery(true);
+
+  // Guests can pick several photos at once — uploaded one at a time (kinder
+  // to slow venue WiFi than firing them all off in parallel), with a running
+  // "photo 2 of 5" style status so it's clear something is still happening.
+  function readFileAsDataURL(file){
+    return new Promise(function(resolve, reject){
+      var reader = new FileReader();
+      reader.onload = function(){ resolve(reader.result); };
+      reader.onerror = function(){ reject(new Error('read-failed')); };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function uploadOnePhoto(file){
+    return readFileAsDataURL(file)
+      .catch(function(){ throw new Error('Could not read one of your photos.'); })
+      .then(function(dataUrl){
+        return fetch('/api/guest-photos', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ image: dataUrl })
+        }).then(function(r){ return r.json().then(function(data){ return { ok: r.ok, data: data }; }); });
+      })
+      .then(function(res){
+        if (!res.ok) throw new Error((res.data && res.data.error) || 'Something went wrong with one of your photos.');
+        return true;
+      }, function(err){
+        if (err instanceof Error) throw err;
+        throw new Error('Network hiccup — please try again in a moment.');
+      });
+  }
 
   document.getElementById('guestPhotoInput').addEventListener('change', function(){
-    var file = this.files && this.files[0];
+    var files = this.files ? Array.prototype.slice.call(this.files) : [];
     var input = this;
-    if (!file) return;
+    if (!files.length) return;
     var msgEl = document.getElementById('guestPhotoMsg');
     msgEl.className = 'photo-msg';
-    msgEl.textContent = 'Uploading…';
-    var reader = new FileReader();
-    reader.onload = function(){
-      fetch('/api/guest-photos', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image: reader.result })
-      }).then(function(r){ return r.json().then(function(data){ return { ok: r.ok, data: data }; }); })
-        .then(function(res){
-          if (!res.ok){
-            msgEl.className = 'photo-msg error';
-            msgEl.textContent = (res.data && res.data.error) || 'Something went wrong — please try again.';
-            return;
-          }
-          msgEl.textContent = 'Thank you for sharing!';
-          loadPhotoGallery();
-          setTimeout(function(){ if (msgEl.textContent === 'Thank you for sharing!') msgEl.textContent = ''; }, 3000);
-        }).catch(function(){
-          msgEl.className = 'photo-msg error';
-          msgEl.textContent = 'Network hiccup — please try again in a moment.';
+
+    var total = files.length;
+    var succeeded = 0;
+    var firstError = null;
+
+    files.reduce(function(chain, file, i){
+      return chain.then(function(){
+        msgEl.textContent = total > 1 ? ('Uploading photo ' + (i + 1) + ' of ' + total + '…') : 'Uploading…';
+        return uploadOnePhoto(file).then(function(){
+          succeeded++;
+        }).catch(function(err){
+          if (!firstError) firstError = err.message;
         });
-    };
-    reader.onerror = function(){
-      msgEl.className = 'photo-msg error';
-      msgEl.textContent = 'Could not read that file — please try again.';
-    };
-    reader.readAsDataURL(file);
-    input.value = ''; // allow choosing the same file again later
+      });
+    }, Promise.resolve()).then(function(){
+      if (succeeded > 0) loadPhotoGallery(true);
+      if (succeeded === total){
+        msgEl.className = 'photo-msg';
+        msgEl.textContent = total > 1 ? ('Thank you for sharing ' + total + ' photos!') : 'Thank you for sharing!';
+        setTimeout(function(){ if (msgEl.textContent.indexOf('Thank you') === 0) msgEl.textContent = ''; }, 3000);
+      } else if (succeeded > 0){
+        msgEl.className = 'photo-msg error';
+        msgEl.textContent = succeeded + ' of ' + total + ' photos uploaded. ' + firstError;
+      } else {
+        msgEl.className = 'photo-msg error';
+        msgEl.textContent = firstError || 'Something went wrong — please try again.';
+      }
+    });
+
+    input.value = ''; // allow choosing the same files again later
   });
 </script>
 </body>

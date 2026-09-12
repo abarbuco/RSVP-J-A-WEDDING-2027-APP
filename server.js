@@ -772,18 +772,48 @@ app.delete("/api/admin/guest-photos/:id", (req, res) => {
   res.json({ ok: true });
 });
 
-// One-click download of every guest photo as a single ZIP file, so Annie can
-// grab them all in one go and drop them into Google Drive (or anywhere else)
-// herself — no Google account setup or ongoing integration needed. Each file
-// keeps a friendly name inside the zip (the guest's name if they gave one,
-// plus the date, so photos don't collide or look like a random ID).
+// Builds a friendly, collision-free filename for one guest photo, e.g.
+// "2026-09-12-Tita Baby.jpg" — shared by the single-file and ZIP downloads
+// below so a photo has the same name either way.
+function friendlyPhotoName(photo, usedNames) {
+  const filePath = path.join(UPLOADS_DIR, path.basename(photo.imageUrl || ""));
+  const ext = path.extname(filePath) || ".jpg";
+  const dateStamp = (photo.uploadedAt || "").slice(0, 10) || "undated";
+  const who = String(photo.name || "guest").trim().replace(/[^a-z0-9 _-]/gi, "").slice(0, 40) || "guest";
+  const base = `${dateStamp}-${who}`;
+  let name = `${base}${ext}`;
+  if (usedNames) {
+    let n = 2;
+    while (usedNames.has(name.toLowerCase())) {
+      name = `${base}-${n}${ext}`;
+      n++;
+    }
+    usedNames.add(name.toLowerCase());
+  }
+  return { filePath, name };
+}
+
+// One-click download of every guest photo (or, with ?ids=a,b,c, just a
+// chosen selection) as a single ZIP file, so Annie can grab them in bulk and
+// drop them into Google Drive (or anywhere else) herself — no Google account
+// setup or ongoing integration needed.
 app.get("/api/admin/guest-photos/export", (req, res) => {
-  const photos = readGuestPhotos();
-  if (!photos.length) {
+  let photos = readGuestPhotos();
+  const rawIds = String(req.query.ids || "").trim();
+  if (rawIds) {
+    const wanted = new Set(rawIds.split(",").map((s) => s.trim()).filter(Boolean));
+    photos = photos.filter((p) => wanted.has(p.id));
+    if (!photos.length) {
+      return res.status(404).json({ error: "Please select at least one photo to download." });
+    }
+  } else if (!photos.length) {
     return res.status(404).json({ error: "There are no guest photos to export yet." });
   }
 
-  res.attachment(`aj-guest-photos-${new Date().toISOString().slice(0, 10)}.zip`);
+  const zipName = rawIds
+    ? `aj-guest-photos-selected-${new Date().toISOString().slice(0, 10)}.zip`
+    : `aj-guest-photos-${new Date().toISOString().slice(0, 10)}.zip`;
+  res.attachment(zipName);
   const archive = archiver("zip", { zlib: { level: 9 } });
   archive.on("error", (err) => {
     console.error("Guest photo export failed:", err);
@@ -794,23 +824,35 @@ app.get("/api/admin/guest-photos/export", (req, res) => {
 
   const usedNames = new Set();
   photos.forEach((p) => {
-    const filePath = path.join(UPLOADS_DIR, path.basename(p.imageUrl || ""));
+    const { filePath, name } = friendlyPhotoName(p, usedNames);
     if (!fs.existsSync(filePath)) return; // skip any record whose file is missing
-    const ext = path.extname(filePath) || ".jpg";
-    const dateStamp = (p.uploadedAt || "").slice(0, 10) || "undated";
-    const who = String(p.name || "guest").trim().replace(/[^a-z0-9 _-]/gi, "").slice(0, 40) || "guest";
-    let base = `${dateStamp}-${who}`;
-    let name = `${base}${ext}`;
-    let n = 2;
-    while (usedNames.has(name.toLowerCase())) {
-      name = `${base}-${n}${ext}`;
-      n++;
-    }
-    usedNames.add(name.toLowerCase());
     archive.file(filePath, { name });
   });
 
   archive.finalize();
+});
+
+// Single-photo download for the admin panel — lets Annie grab just one
+// guest's photo without downloading the whole ZIP.
+app.get("/api/admin/guest-photos/:id/download", (req, res) => {
+  const photos = readGuestPhotos();
+  const photo = photos.find((p) => p.id === req.params.id);
+  if (!photo) return res.status(404).json({ error: "Photo not found." });
+  const { filePath, name } = friendlyPhotoName(photo);
+  if (!fs.existsSync(filePath)) return res.status(404).json({ error: "That photo's file is missing." });
+  res.download(filePath, name);
+});
+
+// Same single-photo download, but public (no admin login) — lets a guest
+// save someone's shared photo straight from the live gallery on the
+// invitation page, one at a time, without needing to right-click/long-press.
+app.get("/api/guest-photos/:id/download", (req, res) => {
+  const photos = readGuestPhotos();
+  const photo = photos.find((p) => p.id === req.params.id);
+  if (!photo) return res.status(404).json({ error: "Photo not found." });
+  const { filePath, name } = friendlyPhotoName(photo);
+  if (!fs.existsSync(filePath)) return res.status(404).json({ error: "That photo's file is missing." });
+  res.download(filePath, name);
 });
 
 // --- Wedding Program (run-of-show) -----------------------------------------

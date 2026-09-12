@@ -55,7 +55,7 @@
     border:1px solid var(--rust); background:var(--rust); color:#fff8ee;
     padding:9px 16px; border-radius:999px;
   }
-  button.ghost{ background:transparent; color:var(--rust); }
+  button.ghost, .file-btn.ghost{ background:transparent; color:var(--rust); }
   button.danger{ background:transparent; color:var(--bad); border-color:var(--bad); }
   button:disabled{ opacity:.55; cursor:default; }
 
@@ -86,6 +86,14 @@
     position:absolute; top:6px; right:6px; padding:4px 9px; font-size:.68rem;
     background:var(--paper); border-color:var(--bad); color:var(--bad);
   }
+  .photo-tile .photo-select{
+    position:absolute; top:8px; left:8px; width:19px; height:19px; cursor:pointer;
+  }
+  .photo-tile .photo-dl-link{
+    position:absolute; bottom:6px; right:6px; width:24px; height:24px; border-radius:50%;
+    background:rgba(43,33,26,.72); color:#fff8ee; font-size:.9rem; line-height:24px; text-align:center; text-decoration:none;
+  }
+  #guestPhotosBulkBar{ display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:12px; font-size:.85rem; }
   .ok{ color:var(--good); font-size:.85rem; margin-top:8px; }
   .upload-summary{ font-size:.85rem; margin-top:10px; }
   a.qr-link{ color:var(--rust); font-size:.82rem; text-decoration:none; border-bottom:1px dotted var(--rust); }
@@ -192,10 +200,14 @@
   <div class="panel">
     <h2>Guest Photos</h2>
     <p class="desc">Photos guests upload right from the invitation page appear here and in their live gallery instantly — no approval needed before they're visible. Remove any photo below if it shouldn't be up.</p>
-    <p style="margin:2px 0 14px;">
+    <div id="guestPhotosBulkBar">
       <a id="exportPhotosBtn" class="file-btn" style="display:inline-block; text-decoration:none;" href="/api/admin/guest-photos/export">Export All Photos (.zip)</a>
-      <span id="exportPhotosMsg" style="margin-left:10px; font-size:.85rem;"></span>
-    </p>
+      <label style="display:inline-flex; align-items:center; gap:5px; cursor:pointer;">
+        <input type="checkbox" id="selectAllPhotosCb" /> Select all
+      </label>
+      <a id="downloadSelectedBtn" class="file-btn ghost" style="display:inline-block; text-decoration:none; opacity:.5; pointer-events:none;" href="#">Download Selected (0)</a>
+      <span id="exportPhotosMsg"></span>
+    </div>
     <div class="photo-grid" id="guestPhotosList"><p class="empty">Loading…</p></div>
   </div>
 
@@ -542,6 +554,29 @@
   var guestPhotosListEl = document.getElementById('guestPhotosList');
   var exportPhotosBtn = document.getElementById('exportPhotosBtn');
   var exportPhotosMsg = document.getElementById('exportPhotosMsg');
+  var selectAllPhotosCb = document.getElementById('selectAllPhotosCb');
+  var downloadSelectedBtn = document.getElementById('downloadSelectedBtn');
+
+  function getSelectedPhotoIds(){
+    return Array.prototype.slice.call(guestPhotosListEl.querySelectorAll('.photo-select:checked'))
+      .map(function(cb){ return cb.closest('.photo-tile').getAttribute('data-id'); });
+  }
+
+  function updateBulkBar(){
+    var ids = getSelectedPhotoIds();
+    downloadSelectedBtn.textContent = 'Download Selected (' + ids.length + ')';
+    if (ids.length){
+      downloadSelectedBtn.href = '/api/admin/guest-photos/export?ids=' + ids.map(encodeURIComponent).join(',');
+      downloadSelectedBtn.style.opacity = '1';
+      downloadSelectedBtn.style.pointerEvents = 'auto';
+    } else {
+      downloadSelectedBtn.href = '#';
+      downloadSelectedBtn.style.opacity = '.5';
+      downloadSelectedBtn.style.pointerEvents = 'none';
+    }
+    var allCbs = guestPhotosListEl.querySelectorAll('.photo-select');
+    selectAllPhotosCb.checked = allCbs.length > 0 && ids.length === allCbs.length;
+  }
 
   function loadGuestPhotos(){
     fetch('/api/guest-photos?limit=200').then(function(r){ return r.json(); }).then(function(data){
@@ -550,13 +585,17 @@
       exportPhotosBtn.style.opacity = hasPhotos ? '1' : '.5';
       exportPhotosBtn.style.pointerEvents = hasPhotos ? 'auto' : 'none';
       exportPhotosMsg.textContent = hasPhotos ? '' : 'Nothing to export yet.';
-      if (!photos.length){ guestPhotosListEl.innerHTML = '<p class="empty">No guest photos yet.</p>'; return; }
+      selectAllPhotosCb.checked = false;
+      if (!photos.length){ guestPhotosListEl.innerHTML = '<p class="empty">No guest photos yet.</p>'; updateBulkBar(); return; }
       guestPhotosListEl.innerHTML = photos.map(function(p){
         return '<div class="photo-tile" data-id="' + p.id + '">' +
+          '<input type="checkbox" class="photo-select" title="Select this photo" />' +
           '<img src="' + esc(p.imageUrl) + '" alt="" loading="lazy" />' +
+          '<a class="photo-dl-link" href="/api/admin/guest-photos/' + p.id + '/download" title="Download this photo">&#8595;</a>' +
           '<button type="button" class="danger remove-photo-btn">Remove</button>' +
           '</div>';
       }).join('');
+      updateBulkBar();
     }).catch(function(){
       guestPhotosListEl.innerHTML = '<p class="err">Could not load guest photos.</p>';
     });
@@ -569,6 +608,19 @@
     var id = tile.getAttribute('data-id');
     if (!confirm('Remove this photo?')) return;
     fetch('/api/admin/guest-photos/' + id, { method: 'DELETE' }).then(function(){ loadGuestPhotos(); });
+  });
+
+  guestPhotosListEl.addEventListener('change', function(e){
+    if (!e.target.classList.contains('photo-select')) return;
+    updateBulkBar();
+  });
+
+  selectAllPhotosCb.addEventListener('change', function(){
+    var checked = selectAllPhotosCb.checked;
+    Array.prototype.forEach.call(guestPhotosListEl.querySelectorAll('.photo-select'), function(cb){
+      cb.checked = checked;
+    });
+    updateBulkBar();
   });
 
   // ================= Shared Photo Album =================

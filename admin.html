@@ -84,7 +84,11 @@
 <div class="wrap">
   <div style="display:flex; justify-content:space-between; align-items:baseline; gap:12px; flex-wrap:wrap;">
     <h1>Wedding Admin</h1>
-    <a href="#" id="logoutLink" style="font-size:.8rem; color:var(--ink-soft);">Log out</a>
+    <span style="font-size:.8rem; white-space:nowrap;">
+      <a href="/admin/checkin" style="color:var(--ink-soft);">Guest Check-In</a>
+      · <a href="/admin/qr-print" style="color:var(--ink-soft);">Print QR Codes</a>
+      · <a href="#" id="logoutLink" style="color:var(--ink-soft);">Log out</a>
+    </span>
   </div>
   <p class="sub">Annie &amp; Jay · #AJCloseTheGap — RSVPs, seating, updates, and the program.</p>
 
@@ -226,7 +230,8 @@
         '<span class="name">' + esc(s.name) + '</span>' +
         '<input type="text" class="table-input" value="' + esc(s.table || '') + '" placeholder="Table" />' +
         '<button class="ghost save-seat-btn" type="button">Save</button>' +
-        '<a class="qr-link" href="/api/qr/' + s.id + '" target="_blank" rel="noopener">View / Print QR</a>' +
+        '<a class="qr-link" href="/api/qr/' + s.id + '" target="_blank" rel="noopener">View QR</a>' +
+        '<a class="qr-link" href="/admin/qr-print?q=' + encodeURIComponent(s.name) + '" target="_blank" rel="noopener">Print QR Card</a>' +
         '<button class="danger remove-seat-btn" type="button">Remove</button>' +
         '</div>';
     }).join('');

@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Guest Check-In — Annie &amp; Jay</title>
+<meta name="robots" content="noindex, nofollow" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%92%8D%3C/text%3E%3C/svg%3E" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600&family=Jost:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ivory:#f6efe2; --paper:#fffcf6; --ink:#2b211a; --ink-soft:#6b5c4e;
+    --rust:#7a4a2e; --line:rgba(43,33,26,.15);
+    --good:#4d6a3a; --good-bg:rgba(77,106,58,.14);
+    --bad:#9a5030; --bad-bg:rgba(154,80,48,.14);
+    --neutral:#8a7a63; --neutral-bg:rgba(138,122,99,.14);
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --ivory:#231a14; --paper:#2b2019; --ink:#f3e9d8; --ink-soft:#cdb9a2;
+      --rust:#d99a6c; --line:rgba(243,233,216,.16);
+      --good:#8fae72; --good-bg:rgba(143,174,114,.16);
+      --bad:#e2916a; --bad-bg:rgba(226,145,106,.16);
+      --neutral:#c9bba5; --neutral-bg:rgba(201,187,165,.16);
+    }
+  }
+  *{ box-sizing:border-box; }
+  body{
+    margin:0; background:var(--ivory); color:var(--ink);
+    font-family:'Jost', ui-sans-serif, system-ui, sans-serif;
+    padding:24px 16px 60px;
+  }
+  .wrap{ max-width:560px; margin:0 auto; }
+  .topbar{ display:flex; justify-content:space-between; align-items:baseline; gap:12px; flex-wrap:wrap; margin-bottom:2px; }
+  h1{ font-family:'Cormorant Garamond', Georgia, serif; font-weight:600; font-size:2rem; margin:0; }
+  .toplinks{ font-size:.85rem; white-space:nowrap; }
+  .toplinks a{ color:var(--ink-soft); text-decoration:none; }
+  .toplinks a:hover{ color:var(--rust); }
+  .sub{ color:var(--ink-soft); font-size:1rem; margin:0 0 24px; }
+
+  .searchbox{
+    width:100%; font-family:'Jost', sans-serif; font-size:1.35rem; padding:18px 20px;
+    border:2px solid var(--rust); border-radius:12px; background:var(--paper); color:var(--ink);
+    margin-bottom:8px;
+  }
+  .count{ font-size:.85rem; color:var(--ink-soft); margin:0 0 18px; min-height:1.2em; }
+
+  .list{ display:flex; flex-direction:column; gap:14px; }
+  .card{
+    background:var(--paper); border:1px solid var(--line); border-radius:12px;
+    padding:18px 20px;
+  }
+  .card .name{ font-family:'Cormorant Garamond', Georgia, serif; font-weight:600; font-size:1.5rem; margin:0 0 10px; }
+  .pill{
+    display:inline-block; font-size:.95rem; font-weight:600; letter-spacing:.02em;
+    padding:6px 14px; border-radius:999px; margin-bottom:12px;
+  }
+  .pill.yes{ background:var(--good-bg); color:var(--good); }
+  .pill.no{ background:var(--bad-bg); color:var(--bad); }
+  .pill.unknown{ background:var(--neutral-bg); color:var(--neutral); }
+  .table-line{ font-size:1.3rem; font-weight:600; color:var(--rust); }
+  .table-line .label{ font-size:.72rem; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-soft); font-weight:400; display:block; margin-bottom:2px; }
+  .msg-note{ margin-top:10px; font-size:.9rem; color:var(--ink-soft); font-style:italic; }
+
+  .empty{ text-align:center; color:var(--ink-soft); padding:40px 0; font-size:1.05rem; }
+  .hint{ text-align:center; color:var(--ink-soft); padding:30px 0; font-size:1.05rem; }
+  .err{ text-align:center; color:var(--bad); padding:20px 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <h1>Guest Check-In</h1>
+    <span class="toplinks"><a href="/admin">Full Admin</a> · <a href="#" id="logoutLink">Log out</a></span>
+  </div>
+  <p class="sub">Annie &amp; Jay · #AJCloseTheGap — type a name to see RSVP status and table.</p>
+
+  <input type="text" class="searchbox" id="search" placeholder="Type a guest's name…" autocomplete="off" autofocus />
+  <p class="count" id="count"></p>
+
+  <div class="list" id="results">
+    <p class="hint">Start typing a name above.</p>
+  </div>
+</div>
+
+<script>
+  var allGuests = [];
+  var loaded = false;
+  var searchEl = document.getElementById('search');
+  var resultsEl = document.getElementById('results');
+  var countEl = document.getElementById('count');
+
+  function esc(s){ return String(s).replace(/</g,'&lt;'); }
+  function normName(n){ return String(n||'').trim().toLowerCase().replace(/\s+/g,' '); }
+
+  function mergeGuests(rsvps, seating){
+    var byName = {};
+    var merged = [];
+
+    rsvps.forEach(function(r){
+      var entry = {
+        name: r.name,
+        attending: r.attending,
+        guests: r.guests,
+        message: r.message,
+        table: r.table || null
+      };
+      merged.push(entry);
+      byName[normName(r.name)] = true;
+    });
+
+    seating.forEach(function(s){
+      var key = normName(s.name);
+      if (byName[key]) return; // already covered by an RSVP entry
+      merged.push({
+        name: s.name,
+        attending: null,
+        guests: null,
+        message: null,
+        table: s.table || null
+      });
+      byName[key] = true;
+    });
+
+    return merged;
+  }
+
+  function renderResults(){
+    var q = normName(searchEl.value);
+    if (!loaded){
+      resultsEl.innerHTML = '<p class="hint">Loading guest list…</p>';
+      countEl.textContent = '';
+      return;
+    }
+    if (q.length < 2){
+      resultsEl.innerHTML = '<p class="hint">Start typing a name above.</p>';
+      countEl.textContent = '';
+      return;
+    }
+    var matches = allGuests.filter(function(g){ return normName(g.name).indexOf(q) !== -1; });
+    if (!matches.length){
+      resultsEl.innerHTML = '<p class="empty">No guest found matching "' + esc(searchEl.value.trim()) + '".</p>';
+      countEl.textContent = '';
+      return;
+    }
+    countEl.textContent = matches.length === 1 ? '1 match' : (matches.length + ' matches');
+    resultsEl.innerHTML = matches.slice(0, 20).map(function(g){
+      var pill, tableHtml;
+      if (g.attending === 'yes'){
+        pill = '<span class="pill yes">&#10003; Joyfully accepts — ' + g.guests + (g.guests === 1 ? ' guest' : ' guests') + '</span>';
+      } else if (g.attending === 'no'){
+        pill = '<span class="pill no">Regretfully declines</span>';
+      } else {
+        pill = '<span class="pill unknown">No RSVP yet</span>';
+      }
+      if (g.table){
+        tableHtml = '<div class="table-line"><span class="label">Table</span>' + esc(g.table) + '</div>';
+      } else {
+        tableHtml = '<div class="table-line" style="color:var(--ink-soft); font-size:1rem; font-weight:400;">No table assigned yet</div>';
+      }
+      var msgHtml = g.message ? '<p class="msg-note">"' + esc(g.message) + '"</p>' : '';
+      return '<div class="card"><p class="name">' + esc(g.name) + '</p>' + pill + tableHtml + msgHtml + '</div>';
+    }).join('');
+  }
+
+  searchEl.addEventListener('input', renderResults);
+
+  function loadAll(){
+    Promise.all([
+      fetch('/api/admin/rsvps').then(function(r){ return r.json(); }),
+      fetch('/api/admin/seating').then(function(r){ return r.json(); })
+    ]).then(function(results){
+      var rsvps = results[0].rsvps || [];
+      var seating = results[1].seating || [];
+      allGuests = mergeGuests(rsvps, seating);
+      loaded = true;
+      renderResults();
+    }).catch(function(){
+      resultsEl.innerHTML = '<p class="err">Could not load the guest list — please refresh.</p>';
+    });
+  }
+  loadAll();
+
+  document.getElementById('logoutLink').addEventListener('click', function(e){
+    e.preventDefault();
+    fetch('/api/admin-logout', { method: 'POST' }).then(function(){ location.href = '/admin'; });
+  });
+</script>
+</body>
+</html>

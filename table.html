@@ -109,7 +109,7 @@
     card.innerHTML =
       '<p class="greeting">Welcome, ' + name + '!</p>' +
       (big
-        ? '<p class="table-num">' + big + '</p><p class="table-label">Your Table</p>'
+        ? '<p class="hint" style="margin-top:0;">Please be seated at</p><p class="table-num">' + big + '</p><p class="table-label">Your Table</p>'
         : '<p class="hint">Your table assignment will be posted here soon — please check back or ask Annie or Jay.</p>');
     card.hidden = false;
   }

@@ -316,6 +316,24 @@ app.get("/admin", (req, res) => {
   res.sendFile(path.join(__dirname, "admin.html"));
 });
 
+// A simple, big-text, search-only view for ushers/coordinators at the door
+// on the wedding day — same password as the rest of admin, no editing tools.
+app.get("/admin/checkin", (req, res) => {
+  if (!isAdminAuthed(req)) {
+    return res.sendFile(path.join(__dirname, "admin-login.html"));
+  }
+  res.sendFile(path.join(__dirname, "admin-checkin.html"));
+});
+
+// A printable sheet of every guest's personal QR code (name + QR + table),
+// for printing onto invitations or using as table/escort cards.
+app.get("/admin/qr-print", (req, res) => {
+  if (!isAdminAuthed(req)) {
+    return res.sendFile(path.join(__dirname, "admin-login.html"));
+  }
+  res.sendFile(path.join(__dirname, "admin-qr-print.html"));
+});
+
 app.get("/api/admin/rsvps", (req, res) => {
   const entries = readAll();
   const seating = readSeating();

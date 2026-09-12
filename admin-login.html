@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Admin Login — Annie &amp; Jay</title>
+<meta name="robots" content="noindex, nofollow" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%92%8D%3C/text%3E%3C/svg%3E" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600&family=Jost:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ivory:#f6efe2; --paper:#fffcf6; --ink:#2b211a; --ink-soft:#6b5c4e;
+    --rust:#7a4a2e; --gold-soft:#c99a4a; --line:rgba(43,33,26,.15); --bad:#9a5030;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --ivory:#231a14; --paper:#2b2019; --ink:#f3e9d8; --ink-soft:#cdb9a2;
+      --rust:#d99a6c; --gold-soft:#e6c467; --line:rgba(243,233,216,.16); --bad:#e2916a;
+    }
+  }
+  *{ box-sizing:border-box; }
+  body{
+    margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center;
+    background:var(--ivory); color:var(--ink);
+    font-family:'Jost', ui-sans-serif, system-ui, sans-serif;
+    padding:24px;
+  }
+  .card{
+    width:100%; max-width:360px; background:var(--paper); border:1px solid var(--line);
+    border-radius:10px; padding:32px 28px; text-align:center;
+  }
+  h1{ font-family:'Cormorant Garamond', Georgia, serif; font-weight:600; font-size:1.7rem; margin:0 0 6px; }
+  .sub{ color:var(--ink-soft); font-size:.88rem; margin:0 0 22px; }
+  input[type="password"]{
+    width:100%; font-family:'Jost', sans-serif; font-size:1.1rem; padding:12px 14px;
+    border:1px solid var(--line); border-radius:8px; background:var(--ivory); color:var(--ink);
+    margin-bottom:14px; text-align:center;
+  }
+  button{
+    width:100%; padding:13px; border-radius:8px; border:1px solid var(--rust);
+    background:var(--rust); color:#fff8ee; font-family:'Jost', sans-serif; font-size:1rem; cursor:pointer;
+  }
+  button:disabled{ opacity:.6; }
+  .msg{ margin-top:14px; font-size:.9rem; color:var(--bad); min-height:1.2em; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <h1>Wedding Admin</h1>
+    <p class="sub">Annie &amp; Jay · #AJCloseTheGap</p>
+    <form id="loginForm">
+      <input type="password" id="password" placeholder="Enter password" autocomplete="current-password" autofocus />
+      <button type="submit" id="loginBtn">Log In</button>
+      <p class="msg" id="loginMsg"></p>
+    </form>
+  </div>
+
+<script>
+  document.getElementById('loginForm').addEventListener('submit', function(e){
+    e.preventDefault();
+    var btn = document.getElementById('loginBtn');
+    var msg = document.getElementById('loginMsg');
+    var password = document.getElementById('password').value;
+    if (!password){ msg.textContent = 'Please enter the password.'; return; }
+    btn.disabled = true; btn.textContent = 'Checking…';
+    fetch('/api/admin-login', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: password })
+    }).then(function(r){ return r.json().then(function(data){ return {ok:r.ok, data:data}; }); })
+      .then(function(res){
+        if (!res.ok){
+          btn.disabled = false; btn.textContent = 'Log In';
+          msg.textContent = res.data.error || 'Incorrect password.';
+          document.getElementById('password').value = '';
+          document.getElementById('password').focus();
+          return;
+        }
+        location.reload();
+      }).catch(function(){
+        btn.disabled = false; btn.textContent = 'Log In';
+        msg.textContent = 'Network hiccup — please try again.';
+      });
+  });
+</script>
+</body>
+</html>

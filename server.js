@@ -106,22 +106,56 @@ async function generateQrSvg(url) {
 app.use(express.json({ limit: "8mb" }));
 
 // One shared password gate for the admin page and everything under
-// /api/admin — the browser's own built-in login prompt, so there's no
-// custom login page to build or break. Guests never see this: /table,
-// /api/rsvp, /api/updates, /api/program and /api/qr all stay open.
+// /api/admin — a plain on-page login form (not the browser's native Basic
+// Auth prompt, which doesn't show up reliably in every browser/app). Guests
+// never see this: /table, /api/rsvp, /api/updates, /api/program and
+// /api/qr all stay open.
+const ADMIN_TOKEN = crypto.createHash("sha256").update(ADMIN_PASSWORD + ":ajclosethegap-admin").digest("hex");
+
+function parseCookies(req) {
+  const header = req.headers.cookie || "";
+  const out = {};
+  header.split(";").forEach((pair) => {
+    const idx = pair.indexOf("=");
+    if (idx === -1) return;
+    const k = pair.slice(0, idx).trim();
+    const v = pair.slice(idx + 1).trim();
+    if (k) out[k] = decodeURIComponent(v);
+  });
+  return out;
+}
+
+function isAdminAuthed(req) {
+  return parseCookies(req).admin_token === ADMIN_TOKEN;
+}
+
 function requireAdminPassword(req, res, next) {
-  const header = req.headers.authorization || "";
-  const [scheme, encoded] = header.split(" ");
-  if (scheme === "Basic" && encoded) {
-    const decoded = Buffer.from(encoded, "base64").toString("utf8");
-    const password = decoded.slice(decoded.indexOf(":") + 1);
-    if (password === ADMIN_PASSWORD) return next();
-  }
-  res.set("WWW-Authenticate", 'Basic realm="Wedding Admin"');
-  res.status(401).send("Password required.");
+  if (isAdminAuthed(req)) return next();
+  res.status(401).json({ error: "Please log in first." });
 }
 
 app.use("/api/admin", requireAdminPassword);
+
+// Login/logout live outside the /api/admin prefix so they aren't gated by
+// the middleware above.
+app.post("/api/admin-login", (req, res) => {
+  const body = req.body || {};
+  const password = String(body.password || "");
+  if (password !== ADMIN_PASSWORD) {
+    return res.status(401).json({ error: "Incorrect password. Please try again." });
+  }
+  res.cookie("admin_token", ADMIN_TOKEN, {
+    httpOnly: true,
+    sameSite: "lax",
+    maxAge: 1000 * 60 * 60 * 24 * 30,
+  });
+  res.json({ ok: true });
+});
+
+app.post("/api/admin-logout", (req, res) => {
+  res.clearCookie("admin_token");
+  res.json({ ok: true });
+});
 
 // The page lives at the repo root (index.html next to this file).
 app.get("/", (req, res) => {
@@ -255,9 +289,12 @@ app.get("/api/program", (req, res) => {
   res.json({ program: readProgram() });
 });
 
-// Admin view, now behind the shared password. Shows RSVP data, seating,
-// updates, and the program.
-app.get("/admin", requireAdminPassword, (req, res) => {
+// Admin view, behind the shared password. Not logged in yet? Show the
+// plain login page instead — same URL either way, nothing to remember.
+app.get("/admin", (req, res) => {
+  if (!isAdminAuthed(req)) {
+    return res.sendFile(path.join(__dirname, "admin-login.html"));
+  }
   res.sendFile(path.join(__dirname, "admin.html"));
 });
 

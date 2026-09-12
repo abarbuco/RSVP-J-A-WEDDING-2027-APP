@@ -82,7 +82,10 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>Wedding Admin</h1>
+  <div style="display:flex; justify-content:space-between; align-items:baseline; gap:12px; flex-wrap:wrap;">
+    <h1>Wedding Admin</h1>
+    <a href="#" id="logoutLink" style="font-size:.8rem; color:var(--ink-soft);">Log out</a>
+  </div>
   <p class="sub">Annie &amp; Jay · #AJCloseTheGap — RSVPs, seating, updates, and the program.</p>
 
   <div class="stats" id="stats"></div>
@@ -414,6 +417,12 @@
     var row = e.target.closest('.row');
     var id = row.getAttribute('data-id');
     fetch('/api/admin/program/' + id, { method: 'DELETE' }).then(function(){ loadProgram(); });
+  });
+
+  // ================= Logout =================
+  document.getElementById('logoutLink').addEventListener('click', function(e){
+    e.preventDefault();
+    fetch('/api/admin-logout', { method: 'POST' }).then(function(){ location.href = '/admin'; });
   });
 </script>
 </body>

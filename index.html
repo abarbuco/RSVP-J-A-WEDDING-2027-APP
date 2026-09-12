@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Anne &amp; Jay's Wedding — #AJCloseTheGap</title>
-<meta name="description" content="Join Anne Queen &amp; Jay as they close the gap — February 21, 2027, Plaza Ibarra, Quezon City." />
+<title>Annie &amp; Jay's Wedding — #AJCloseTheGap</title>
+<meta name="description" content="Join Annie Queen &amp; Jay as they close the gap — February 21, 2027, Plaza Ibarra, Quezon City." />
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%92%8D%3C/text%3E%3C/svg%3E" />
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -48,16 +48,34 @@
     padding-inline:16px;
     -webkit-font-smoothing:antialiased;
   }
+  /* Binakol-inspired woven lattice — the Ilocano "eye-dazzler" optical weave,
+     nested diamonds alternating direction like plaited banig matting. */
   body::before{
     content:"";
     position:fixed;
     inset:0;
     z-index:-1;
     background-image:
-      repeating-linear-gradient(45deg, var(--line) 0 1px, transparent 1px 26px),
-      repeating-linear-gradient(-45deg, var(--line) 0 1px, transparent 1px 26px);
-    opacity:.35;
+      repeating-linear-gradient(45deg, var(--line) 0 2px, transparent 2px 22px),
+      repeating-linear-gradient(-45deg, var(--line) 0 2px, transparent 2px 22px),
+      repeating-linear-gradient(45deg, transparent 0 9px, var(--line) 9px 11px, transparent 11px 22px),
+      repeating-linear-gradient(-45deg, transparent 0 9px, var(--line) 9px 11px, transparent 11px 22px);
+    opacity:.4;
   }
+  /* Sawtooth trim — echoes the woven edge of a tapis or banig mat */
+  .trim{
+    height:9px;
+    background-image:
+      linear-gradient(135deg, var(--gold-soft) 25%, transparent 25.5%),
+      linear-gradient(225deg, var(--gold-soft) 25%, transparent 25.5%);
+    background-size:16px 18px;
+    background-repeat:repeat-x;
+    background-position:top center;
+    opacity:.9;
+  }
+  .trim.flip{ transform:scaleY(-1); }
+  .hero .trim.top{ position:absolute; top:0; left:0; right:0; border-radius:6px 6px 0 0; }
+  .footer-trim{ max-width:680px; margin:0 auto; border-radius:3px; overflow:hidden; }
   .page{
     max-width:680px;
     margin:0 auto;
@@ -197,8 +215,9 @@
   .btn.solid{ background:var(--rust); color:#fff8ee; }
   .btn.solid:hover{ background:var(--rust-deep); border-color:var(--rust-deep); }
 
-  .swatches{ display:flex; gap:8px; margin:12px 0 14px; }
-  .swatch{ width:28px; height:28px; border-radius:50%; border:1px solid var(--line); }
+  .attire-icons{ display:flex; gap:22px; margin:12px 0 16px; }
+  .attire-icons figure{ margin:0; text-align:center; }
+  .attire-icons figcaption{ margin-top:4px; font-size:.68rem; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-soft); }
 
   /* ---------- Map ---------- */
   .map-frame{
@@ -272,12 +291,31 @@
 <div class="page">
 
   <section class="card hero reveal">
-    <svg class="petal tl" width="46" height="46" viewBox="0 0 46 46" fill="none"><g fill="currentColor" style="color:var(--olive)"><circle cx="23" cy="10" r="7"/><circle cx="34" cy="18" r="7"/><circle cx="30" cy="31" r="7"/><circle cx="16" cy="31" r="7"/><circle cx="12" cy="18" r="7"/><circle cx="23" cy="20" r="5" style="color:var(--gold-soft)" fill="var(--gold-soft)"/></g></svg>
-    <svg class="petal br" width="46" height="46" viewBox="0 0 46 46" fill="none"><g fill="currentColor" style="color:var(--olive)"><circle cx="23" cy="10" r="7"/><circle cx="34" cy="18" r="7"/><circle cx="30" cy="31" r="7"/><circle cx="16" cy="31" r="7"/><circle cx="12" cy="18" r="7"/><circle cx="23" cy="20" r="5" style="color:var(--gold-soft)" fill="var(--gold-soft)"/></g></svg>
+    <div class="trim top" aria-hidden="true"></div>
+    <svg class="petal tl" width="42" height="42" viewBox="0 0 44 44" aria-hidden="true">
+      <g fill="var(--paper)" stroke="var(--olive)" stroke-width="1.3">
+        <ellipse cx="22" cy="10.5" rx="5" ry="11" transform="rotate(0 22 22)"/>
+        <ellipse cx="22" cy="10.5" rx="5" ry="11" transform="rotate(72 22 22)"/>
+        <ellipse cx="22" cy="10.5" rx="5" ry="11" transform="rotate(144 22 22)"/>
+        <ellipse cx="22" cy="10.5" rx="5" ry="11" transform="rotate(216 22 22)"/>
+        <ellipse cx="22" cy="10.5" rx="5" ry="11" transform="rotate(288 22 22)"/>
+      </g>
+      <circle cx="22" cy="22" r="3.4" fill="var(--gold-soft)"/>
+    </svg>
+    <svg class="petal br" width="42" height="42" viewBox="0 0 44 44" aria-hidden="true">
+      <g fill="var(--paper)" stroke="var(--olive)" stroke-width="1.3">
+        <ellipse cx="22" cy="10.5" rx="5" ry="11" transform="rotate(0 22 22)"/>
+        <ellipse cx="22" cy="10.5" rx="5" ry="11" transform="rotate(72 22 22)"/>
+        <ellipse cx="22" cy="10.5" rx="5" ry="11" transform="rotate(144 22 22)"/>
+        <ellipse cx="22" cy="10.5" rx="5" ry="11" transform="rotate(216 22 22)"/>
+        <ellipse cx="22" cy="10.5" rx="5" ry="11" transform="rotate(288 22 22)"/>
+      </g>
+      <circle cx="22" cy="22" r="3.4" fill="var(--gold-soft)"/>
+    </svg>
 
     <p class="eyebrow">Together with their families</p>
-    <h1 class="monogram">Anne &amp; Jay</h1>
-    <p class="fullnames">Anne Queen C. Barbuco <span class="amp">&amp;</span> Jay B. Josef</p>
+    <h1 class="monogram">Annie &amp; Jay</h1>
+    <p class="fullnames">Annie Queen C. Barbuco <span class="amp">&amp;</span> Jay B. Josef</p>
     <p class="save-the-date">are joyfully <em>closing the gap</em></p>
     <p class="when">Sunday, February 21, 2027 · 4:00 in the afternoon</p>
     <span class="hashtag-chip">#AJCloseTheGap</span>
@@ -285,7 +323,13 @@
 
   <div class="weave-divider" aria-hidden="true">
     <span class="rule"></span>
-    <svg width="18" height="18" viewBox="0 0 18 18"><path d="M9 0 L18 9 L9 18 L0 9 Z" fill="currentColor"/></svg>
+    <svg width="46" height="20" viewBox="0 0 46 20">
+      <g fill="var(--paper)" stroke="var(--gold-soft)" stroke-width="1.1">
+        <polygon points="9,1 16,5 16,15 9,19 2,15 2,5"/>
+        <polygon points="23,1 30,5 30,15 23,19 16,15 16,5"/>
+        <polygon points="37,1 44,5 44,15 37,19 30,15 30,5"/>
+      </g>
+    </svg>
     <span class="rule"></span>
   </div>
 
@@ -313,13 +357,41 @@
       <div class="detail-card">
         <h3>Dress Code</h3>
         <p><strong>Modern Filipiniana</strong></p>
-        <div class="swatches" aria-hidden="true">
-          <span class="swatch" style="background:#556339" title="Banana-leaf olive"></span>
-          <span class="swatch" style="background:#7a4a2e" title="Coconut wood"></span>
-          <span class="swatch" style="background:#c99a4a" title="Antique gold"></span>
-          <span class="swatch" style="background:#f5f0e6;border-color:#c99a4a" title="Ivory"></span>
+        <div class="attire-icons" aria-hidden="true">
+          <figure>
+            <svg viewBox="0 0 80 104" width="72" height="94">
+              <g fill="none" stroke="var(--rust)" stroke-width="2" stroke-linejoin="round">
+                <path d="M40 6 L30 14 L22 10 L8 22 L18 34 L24 28 L24 96 L56 96 L56 28 L62 34 L72 22 L58 10 L50 14 Z"/>
+                <path d="M40 6 L34 18 L40 26 L46 18 Z"/>
+              </g>
+              <line x1="40" y1="26" x2="40" y2="94" stroke="var(--gold-soft)" stroke-width="1.5"/>
+              <circle cx="40" cy="38" r="1.6" fill="var(--gold-soft)"/>
+              <circle cx="40" cy="50" r="1.6" fill="var(--gold-soft)"/>
+              <circle cx="40" cy="62" r="1.6" fill="var(--gold-soft)"/>
+              <circle cx="40" cy="74" r="1.6" fill="var(--gold-soft)"/>
+              <g stroke="var(--gold-soft)" stroke-width="1" opacity=".55">
+                <path d="M30 34 L34 38 M34 34 L30 38 M46 34 L50 38 M50 34 L46 38"/>
+                <path d="M30 44 L34 48 M34 44 L30 48 M46 44 L50 48 M50 44 L46 48"/>
+              </g>
+            </svg>
+            <figcaption>Barong Tagalog</figcaption>
+          </figure>
+          <figure>
+            <svg viewBox="0 0 80 104" width="72" height="94">
+              <g fill="none" stroke="var(--rust)" stroke-width="2" stroke-linejoin="round">
+                <path d="M40 8 L31 20 L34 34 L46 34 L49 20 Z"/>
+                <path d="M31 20 C14 14 4 20 6 30 C16 30 26 27 32 24 Z"/>
+                <path d="M49 20 C66 14 76 20 74 30 C64 30 54 27 48 24 Z"/>
+                <path d="M34 34 L20 96 L60 96 L46 34 Z"/>
+              </g>
+              <path d="M40 40 L40 90" stroke="var(--gold-soft)" stroke-width="1" opacity=".6"/>
+              <path d="M30 55 Q40 60 50 55" stroke="var(--gold-soft)" stroke-width="1" opacity=".6" fill="none"/>
+              <path d="M26 75 Q40 81 54 75" stroke="var(--gold-soft)" stroke-width="1" opacity=".6" fill="none"/>
+            </svg>
+            <figcaption>Filipiniana</figcaption>
+          </figure>
         </div>
-        <p>Barong-inspired tops, ternos, and flowing skirts in earthy tropical tones — banana-leaf olive, coconut wood, and antique gold, grounded in ivory. Kindly reserve white for the bride.</p>
+        <p>Barong and Filipiniana silhouettes always suit the mood — but come in whatever colors feel like <em>you</em>. Our earthy palette is just inspiration, not a rulebook; we want our guests to be creative. The one ask: kindly save white for the bride.</p>
       </div>
     </div>
   </section>
@@ -366,7 +438,7 @@
       </div>
 
       <div class="field">
-        <label for="message">Message for Anne &amp; Jay (optional)</label>
+        <label for="message">Message for Annie &amp; Jay (optional)</label>
         <textarea id="message" name="message" placeholder="A well-wish, a song request, a dietary note…"></textarea>
       </div>
 
@@ -385,10 +457,12 @@
     <div class="guest-wall" id="guestWall"><span class="empty">Be the first to RSVP!</span></div>
   </section>
 
+  <div class="trim footer-trim" aria-hidden="true"></div>
+
   <footer>
-    <p class="sign">Anne &amp; Jay</p>
+    <p class="sign">Annie &amp; Jay</p>
     <p class="tag">#AJCloseTheGap</p>
-    <p class="fine">We can't wait to celebrate with you.<br/>For questions, reach out to Anne or Jay directly.</p>
+    <p class="fine">We can't wait to celebrate with you.<br/>For questions, reach out to Annie or Jay directly.</p>
   </footer>
 
 </div>
@@ -433,15 +507,15 @@
       "DTSTAMP:" + new Date().toISOString().replace(/[-:]/g,'').split('.')[0] + "Z",
       "DTSTART:20270221T080000Z",
       "DTEND:20270221T130000Z",
-      "SUMMARY:Anne \\& Jay's Wedding — #AJCloseTheGap",
-      "DESCRIPTION:Ceremony and reception for Anne Queen C. Barbuco \\& Jay B. Josef. #AJCloseTheGap",
+      "SUMMARY:Annie \\& Jay's Wedding — #AJCloseTheGap",
+      "DESCRIPTION:Ceremony and reception for Annie Queen C. Barbuco \\& Jay B. Josef. #AJCloseTheGap",
       "LOCATION:Plaza Ibarra\\, 77 Timog Ave\\, Diliman\\, Quezon City\\, 1103 Metro Manila\\, Philippines",
       "END:VEVENT","END:VCALENDAR"
     ].join("\r\n");
     var blob = new Blob([ics], { type: "text/calendar" });
     var url = URL.createObjectURL(blob);
     var a = document.createElement('a');
-    a.href = url; a.download = "Anne-and-Jay-Wedding.ics";
+    a.href = url; a.download = "Annie-and-Jay-Wedding.ics";
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
     setTimeout(function(){ URL.revokeObjectURL(url); }, 2000);
   });

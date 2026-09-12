@@ -300,6 +300,13 @@
   .qr-result-hint{ margin:12px 0 0; font-size:.85rem; color:var(--ink-soft); line-height:1.5; }
   .qr-result-hint a{ color:var(--rust); }
 
+  .decline-result{
+    margin-top:18px; padding:20px 22px; text-align:center;
+    border:1px solid var(--line); border-radius:6px; background:var(--ivory);
+  }
+  .decline-result-title{ font-family:'Cormorant Garamond', Georgia, serif; font-weight:600; font-size:1.15rem; color:var(--rust); margin:0 0 8px; }
+  .decline-result-text{ font-size:.9rem; color:var(--ink-soft); line-height:1.6; margin:0; }
+
   .stats-row{ display:flex; gap:14px; margin:24px 0; flex-wrap:wrap; }
   .stat{ flex:1; min-width:120px; text-align:center; border:1px solid var(--line); border-radius:6px; padding:14px 8px; background:var(--ivory); }
   .stat .n{ font-family:'Cormorant Garamond', serif; font-size:1.8rem; font-weight:600; color:var(--rust); font-variant-numeric: tabular-nums; }
@@ -519,6 +526,11 @@
       <p class="qr-result-hint">Save a screenshot of this, or take a photo — scan it on the day to see your table number and the wedding program. You can also just visit <a id="qrResultLink" href="#">this link</a> anytime.</p>
     </div>
 
+    <div class="decline-result" id="declineResult" hidden>
+      <p class="decline-result-title">We understand, and we're so thankful you let us know</p>
+      <p class="decline-result-text">You'll be missed, but we truly appreciate you taking the time to respond. Wishing you all the best, and we hope to celebrate with you again soon.</p>
+    </div>
+
     <div class="weave-divider" aria-hidden="true"><span class="rule"></span></div>
 
     <div class="stats-row" id="statsRow">
@@ -684,14 +696,20 @@
         formMsg.className = 'form-msg success';
 
         var qrResult = document.getElementById('qrResult');
+        var declineResult = document.getElementById('declineResult');
         if (payload.attending === 'yes' && res.data.seatingId) {
           var qrUrl = '/api/qr/' + res.data.seatingId;
           var tableUrl = '/table/' + res.data.seatingId;
           document.getElementById('qrResultImg').src = qrUrl;
           document.getElementById('qrResultLink').href = tableUrl;
           qrResult.hidden = false;
+          declineResult.hidden = true;
+        } else if (payload.attending === 'no') {
+          qrResult.hidden = true;
+          declineResult.hidden = false;
         } else {
           qrResult.hidden = true;
+          declineResult.hidden = true;
         }
 
         form.reset();

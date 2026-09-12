@@ -144,9 +144,17 @@
   <!-- ---------------- Wedding Updates ---------------- -->
   <div class="panel">
     <h2>Post a Wedding Update</h2>
-    <p class="desc">Write a short announcement — it appears right away on the invitation page for all guests.</p>
+    <p class="desc">Write a short announcement — it appears right away on the invitation page for all guests. You can attach a photo too (JPEG, PNG, WEBP, or GIF, up to 8MB).</p>
     <div class="field">
       <textarea id="updateText" maxlength="500" placeholder="e.g. The ceremony start time is moved to 4:30 PM."></textarea>
+    </div>
+    <div class="field">
+      <label for="updateImage">Photo (optional)</label>
+      <input type="file" id="updateImage" accept="image/jpeg,image/png,image/webp,image/gif" />
+      <div id="updateImagePreviewWrap" hidden style="margin-top:10px;">
+        <img id="updateImagePreview" style="max-width:200px; max-height:200px; border-radius:8px; border:1px solid var(--line); display:block;" />
+        <button type="button" id="updateImageRemoveBtn" class="ghost" style="margin-top:8px;">Remove photo</button>
+      </div>
     </div>
     <button id="updateBtn">Post Update</button>
     <div id="updateMsg"></div>
@@ -377,13 +385,21 @@
 
   // ================= Wedding Updates =================
   var updatesListEl = document.getElementById('updatesList');
+  var updateImageInput = document.getElementById('updateImage');
+  var updateImagePreviewWrap = document.getElementById('updateImagePreviewWrap');
+  var updateImagePreview = document.getElementById('updateImagePreview');
+  var pendingImageDataUrl = null; // data:<mime>;base64,... for the photo about to be posted
 
   function loadUpdates(){
     fetch('/api/updates').then(function(r){ return r.json(); }).then(function(data){
       var items = data.updates || [];
       if (!items.length){ updatesListEl.innerHTML = '<p class="empty">No updates posted yet.</p>'; return; }
       updatesListEl.innerHTML = items.map(function(u){
+        var thumb = u.imageUrl
+          ? '<img src="' + esc(u.imageUrl) + '" alt="" style="width:56px; height:56px; object-fit:cover; border-radius:6px; border:1px solid var(--line);" />'
+          : '';
         return '<div class="row" data-id="' + u.id + '">' +
+          thumb +
           '<span class="msg" style="flex-basis:auto;flex:1;font-style:normal;">' + esc(u.message) + '</span>' +
           '<span class="when">' + fmtDate(u.postedAt) + '</span>' +
           '<button class="danger remove-update-btn" type="button">Remove</button>' +
@@ -395,19 +411,44 @@
   }
   loadUpdates();
 
+  updateImageInput.addEventListener('change', function(){
+    var file = updateImageInput.files && updateImageInput.files[0];
+    if (!file){ pendingImageDataUrl = null; updateImagePreviewWrap.hidden = true; return; }
+    var reader = new FileReader();
+    reader.onload = function(){
+      pendingImageDataUrl = reader.result;
+      updateImagePreview.src = pendingImageDataUrl;
+      updateImagePreviewWrap.hidden = false;
+    };
+    reader.readAsDataURL(file);
+  });
+
+  document.getElementById('updateImageRemoveBtn').addEventListener('click', function(){
+    pendingImageDataUrl = null;
+    updateImageInput.value = '';
+    updateImagePreviewWrap.hidden = true;
+  });
+
   document.getElementById('updateBtn').addEventListener('click', function(){
     var msgEl = document.getElementById('updateMsg');
     var text = document.getElementById('updateText').value.trim();
     if (!text){ msgEl.innerHTML = '<p class="err">Please write an update first.</p>'; return; }
+    var btn = document.getElementById('updateBtn');
+    btn.disabled = true; btn.textContent = 'Posting…';
     fetch('/api/admin/updates', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: text })
+      body: JSON.stringify({ message: text, image: pendingImageDataUrl })
     }).then(function(r){ return r.json(); }).then(function(data){
+      btn.disabled = false; btn.textContent = 'Post Update';
       if (!data.ok){ msgEl.innerHTML = '<p class="err">' + esc(data.error || 'Something went wrong.') + '</p>'; return; }
       msgEl.innerHTML = '<p class="ok">Posted!</p>';
       document.getElementById('updateText').value = '';
+      pendingImageDataUrl = null;
+      updateImageInput.value = '';
+      updateImagePreviewWrap.hidden = true;
       loadUpdates();
     }).catch(function(){
+      btn.disabled = false; btn.textContent = 'Post Update';
       msgEl.innerHTML = '<p class="err">Network hiccup — please try again.</p>';
     });
   });

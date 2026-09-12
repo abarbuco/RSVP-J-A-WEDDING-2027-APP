@@ -15,6 +15,7 @@ const DATA_FILE = path.join(DATA_DIR, "rsvps.json");
 const UPDATES_FILE = path.join(DATA_DIR, "updates.json");
 const PROGRAM_FILE = path.join(DATA_DIR, "program.json");
 const SEATING_FILE = path.join(DATA_DIR, "seating.json");
+const UPLOADS_DIR = path.join(DATA_DIR, "uploads");
 
 // --- tiny JSON-file "database" -------------------------------------------
 function ensureFile(file) {
@@ -116,9 +117,15 @@ async function generateQrSvg(url) {
 }
 
 // --- middleware ------------------------------------------------------------
-// 8mb covers the small text payloads everywhere else plus a base64-encoded
-// seating spreadsheet upload from /admin.
-app.use(express.json({ limit: "8mb" }));
+// 15mb covers the small text payloads everywhere else plus a base64-encoded
+// seating spreadsheet or wedding-update photo from /admin.
+app.use(express.json({ limit: "15mb" }));
+
+// Photos attached to Wedding Updates are saved as real files on the
+// persistent data volume (not stuffed into the JSON file) and served back
+// out from here.
+if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+app.use("/uploads", express.static(UPLOADS_DIR));
 
 // One shared password gate for the admin page and everything under
 // /api/admin — a plain on-page login form (not the browser's native Basic
@@ -599,15 +606,66 @@ app.get("/api/updates", (req, res) => {
   res.json({ updates });
 });
 
+const IMAGE_MIME_EXT = {
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/webp": "webp",
+  "image/gif": "gif",
+};
+const MAX_IMAGE_BYTES = 8 * 1024 * 1024; // 8MB decoded
+
+// Accepts a data URL ("data:image/jpeg;base64,...") or a bare base64 string
+// plus a separate mime type. Saves the decoded bytes as a real file on the
+// data volume and returns its public /uploads/... URL, or null if nothing
+// usable was sent. Throws a descriptive Error for a bad/oversized image so
+// the route can turn it into a clean 400.
+function saveUpdateImage(rawImage, rawMime) {
+  if (!rawImage) return null;
+  let mime = String(rawMime || "").trim();
+  let base64 = String(rawImage);
+  const dataUrlMatch = base64.match(/^data:([^;]+);base64,(.*)$/s);
+  if (dataUrlMatch) {
+    mime = dataUrlMatch[1];
+    base64 = dataUrlMatch[2];
+  }
+  const ext = IMAGE_MIME_EXT[mime];
+  if (!ext) throw new Error("Please attach a JPEG, PNG, WEBP, or GIF image.");
+
+  const buf = Buffer.from(base64, "base64");
+  if (!buf.length) throw new Error("That image looks empty. Please try a different file.");
+  if (buf.length > MAX_IMAGE_BYTES) throw new Error("That image is too large — please use one under 8MB.");
+
+  const filename = `${crypto.randomUUID()}.${ext}`;
+  fs.writeFileSync(path.join(UPLOADS_DIR, filename), buf);
+  return `/uploads/${filename}`;
+}
+
+function deleteUpdateImage(imageUrl) {
+  if (!imageUrl || !imageUrl.startsWith("/uploads/")) return;
+  const filename = path.basename(imageUrl);
+  const filePath = path.join(UPLOADS_DIR, filename);
+  fs.unlink(filePath, () => {}); // best-effort; nothing to do if it's already gone
+}
+
 app.post("/api/admin/updates", (req, res) => {
   const body = req.body || {};
   const message = String(body.message || "").trim().slice(0, 500);
   if (!message) return res.status(400).json({ error: "Please write an update first." });
 
+  let imageUrl = null;
+  if (body.image) {
+    try {
+      imageUrl = saveUpdateImage(body.image, body.imageType);
+    } catch (err) {
+      return res.status(400).json({ error: err.message });
+    }
+  }
+
   const updates = readUpdates();
   const entry = {
     id: crypto.randomUUID(),
     message,
+    imageUrl,
     postedAt: new Date().toISOString(),
   };
   updates.push(entry);
@@ -617,9 +675,10 @@ app.post("/api/admin/updates", (req, res) => {
 
 app.delete("/api/admin/updates/:id", (req, res) => {
   const updates = readUpdates();
-  const next = updates.filter((u) => u.id !== req.params.id);
-  if (next.length === updates.length) return res.status(404).json({ error: "Update not found." });
-  writeUpdates(next);
+  const target = updates.find((u) => u.id === req.params.id);
+  if (!target) return res.status(404).json({ error: "Update not found." });
+  deleteUpdateImage(target.imageUrl);
+  writeUpdates(updates.filter((u) => u.id !== req.params.id));
   res.json({ ok: true });
 });
 

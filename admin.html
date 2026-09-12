@@ -79,6 +79,13 @@
   .row input.max-guests-input{ width:56px; }
   .empty{ text-align:center; color:var(--ink-soft); padding:24px 0; font-style:italic; }
   .err{ color:var(--bad); font-size:.85rem; margin-top:8px; }
+  .photo-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(110px, 1fr)); gap:10px; margin-top:14px; }
+  .photo-tile{ position:relative; }
+  .photo-tile img{ width:100%; aspect-ratio:1/1; object-fit:cover; border-radius:8px; border:1px solid var(--line); display:block; }
+  .photo-tile button{
+    position:absolute; top:6px; right:6px; padding:4px 9px; font-size:.68rem;
+    background:var(--paper); border-color:var(--bad); color:var(--bad);
+  }
   .ok{ color:var(--good); font-size:.85rem; margin-top:8px; }
   .upload-summary{ font-size:.85rem; margin-top:10px; }
   a.qr-link{ color:var(--rust); font-size:.82rem; text-decoration:none; border-bottom:1px dotted var(--rust); }
@@ -181,10 +188,17 @@
     <div class="list" id="progList"></div>
   </div>
 
+  <!-- ---------------- Guest Photos ---------------- -->
+  <div class="panel">
+    <h2>Guest Photos</h2>
+    <p class="desc">Photos guests upload right from the invitation page appear here and in their live gallery instantly — no approval needed before they're visible. Remove any photo below if it shouldn't be up.</p>
+    <div class="photo-grid" id="guestPhotosList"><p class="empty">Loading…</p></div>
+  </div>
+
   <!-- ---------------- Shared Photo Album ---------------- -->
   <div class="panel">
-    <h2>Shared Photo Album</h2>
-    <p class="desc">Paste the link to a shared Google Drive (or any) folder where guests can upload and browse everyone's wedding photos. A button linking to it appears on the invitation page — leave this blank to hide that button.</p>
+    <h2>Shared Photo Album (optional)</h2>
+    <p class="desc">Paste the link to a shared Google Drive (or any) folder if you'd also like guests to be able to browse or download full-resolution originals. A "View the full album" link appears under Guest Photos on the invitation page — leave this blank to hide it.</p>
     <div class="field">
       <label for="photoAlbumUrl">Album link</label>
       <input type="text" id="photoAlbumUrl" placeholder="https://drive.google.com/drive/folders/…" />
@@ -518,6 +532,33 @@
     var row = e.target.closest('.row');
     var id = row.getAttribute('data-id');
     fetch('/api/admin/program/' + id, { method: 'DELETE' }).then(function(){ loadProgram(); });
+  });
+
+  // ================= Guest Photos =================
+  var guestPhotosListEl = document.getElementById('guestPhotosList');
+
+  function loadGuestPhotos(){
+    fetch('/api/guest-photos?limit=200').then(function(r){ return r.json(); }).then(function(data){
+      var photos = data.photos || [];
+      if (!photos.length){ guestPhotosListEl.innerHTML = '<p class="empty">No guest photos yet.</p>'; return; }
+      guestPhotosListEl.innerHTML = photos.map(function(p){
+        return '<div class="photo-tile" data-id="' + p.id + '">' +
+          '<img src="' + esc(p.imageUrl) + '" alt="" loading="lazy" />' +
+          '<button type="button" class="danger remove-photo-btn">Remove</button>' +
+          '</div>';
+      }).join('');
+    }).catch(function(){
+      guestPhotosListEl.innerHTML = '<p class="err">Could not load guest photos.</p>';
+    });
+  }
+  loadGuestPhotos();
+
+  guestPhotosListEl.addEventListener('click', function(e){
+    if (!e.target.classList.contains('remove-photo-btn')) return;
+    var tile = e.target.closest('.photo-tile');
+    var id = tile.getAttribute('data-id');
+    if (!confirm('Remove this photo?')) return;
+    fetch('/api/admin/guest-photos/' + id, { method: 'DELETE' }).then(function(){ loadGuestPhotos(); });
   });
 
   // ================= Shared Photo Album =================

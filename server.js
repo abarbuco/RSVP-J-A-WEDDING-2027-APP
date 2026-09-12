@@ -723,6 +723,54 @@ app.delete("/api/admin/updates/:id", (req, res) => {
   res.json({ ok: true });
 });
 
+// --- Guest Photos ------------------------------------------------------
+// Guests upload straight from the homepage (no Google Drive detour needed)
+// and everyone sees a live gallery of the latest photos right there. Kept
+// deliberately simple — no accounts, no approval queue to wait on — with
+// the only moderation being Annie/Jay's ability to remove a photo from the
+// admin panel if something shouldn't be up.
+const GUEST_PHOTOS_FILE = path.join(DATA_DIR, "guest-photos.json");
+function readGuestPhotos() { return readJson(GUEST_PHOTOS_FILE); }
+function writeGuestPhotos(entries) { writeJson(GUEST_PHOTOS_FILE, entries); }
+ensureFile(GUEST_PHOTOS_FILE, "[]");
+
+app.post("/api/guest-photos", (req, res) => {
+  const body = req.body || {};
+  if (!body.image) return res.status(400).json({ error: "Please choose a photo to upload." });
+
+  let imageUrl;
+  try {
+    imageUrl = saveUpdateImage(body.image, body.imageType);
+  } catch (err) {
+    return res.status(400).json({ error: err.message });
+  }
+
+  const name = String(body.name || "").trim().slice(0, 60);
+  const photos = readGuestPhotos();
+  const entry = { id: crypto.randomUUID(), imageUrl, name, uploadedAt: new Date().toISOString() };
+  photos.push(entry);
+  writeGuestPhotos(photos);
+  res.status(201).json({ ok: true, photo: entry });
+});
+
+app.get("/api/guest-photos", (req, res) => {
+  const limit = Math.min(200, Math.max(1, parseInt(req.query.limit, 10) || 24));
+  const photos = readGuestPhotos()
+    .slice()
+    .sort((a, b) => new Date(b.uploadedAt) - new Date(a.uploadedAt))
+    .slice(0, limit);
+  res.json({ photos });
+});
+
+app.delete("/api/admin/guest-photos/:id", (req, res) => {
+  const photos = readGuestPhotos();
+  const target = photos.find((p) => p.id === req.params.id);
+  if (!target) return res.status(404).json({ error: "Photo not found." });
+  deleteUpdateImage(target.imageUrl);
+  writeGuestPhotos(photos.filter((p) => p.id !== req.params.id));
+  res.json({ ok: true });
+});
+
 // --- Wedding Program (run-of-show) -----------------------------------------
 app.post("/api/admin/program", (req, res) => {
   const body = req.body || {};

@@ -197,6 +197,25 @@
   .update-item .update-text{ font-size:1.1rem; line-height:1.55; margin:0; }
   .updates-empty{ color:var(--ink-soft); font-style:italic; text-align:center; padding:8px 0; }
 
+  /* Find Your Table & Program / Share Your Photos side by side on wider
+     screens so the section doesn't run too long; stacked on phones. */
+  .hub-grid{ display:grid; grid-template-columns:1fr 1fr; gap:28px; align-items:start; }
+  @media (max-width:560px){ .hub-grid{ grid-template-columns:1fr; gap:0; } }
+  .hub-grid > div + div{ margin-top:0; }
+  @media (max-width:560px){ .hub-grid > div:last-child{ margin-top:28px; } }
+
+  .photo-gallery{
+    display:grid; grid-template-columns:repeat(auto-fill, minmax(76px, 1fr)); gap:8px; margin-top:16px;
+  }
+  .photo-gallery img{
+    width:100%; aspect-ratio:1/1; object-fit:cover; border-radius:6px; border:1px solid var(--line); background:var(--ivory);
+  }
+  .photo-gallery-empty{ color:var(--ink-soft); font-style:italic; font-size:.9rem; grid-column:1/-1; text-align:center; padding:6px 0; }
+  .photo-msg{ margin-top:12px; font-size:.95rem; line-height:1.5; }
+  .photo-msg.error{ color:var(--rust-deep); }
+  .photo-album-link{ display:block; text-align:center; margin-top:14px; font-size:.92rem; }
+  .photo-album-link a{ color:var(--rust); }
+
   /* Big, simple, easy-to-tap buttons for the main actions on this page —
      kept large and full-width on purpose so they're easy for every guest,
      including less tech-savvy ones, to spot and use without hunting. */
@@ -356,16 +375,22 @@
 
     <div class="weave-divider" aria-hidden="true"><span class="rule"></span></div>
 
-    <h3 class="hub-h3">Find Your Table &amp; Program</h3>
-    <p class="hub-sub">Already RSVP'd? Look yourself up by name — or upload a photo of your QR code — to see your table number, check in, and the wedding program.</p>
-    <a class="btn-lg" href="/table">Find My Table</a>
+    <div class="hub-grid">
+      <div>
+        <h3 class="hub-h3">Find Your Table &amp; Program</h3>
+        <p class="hub-sub">Already RSVP'd? Look yourself up by name — or upload a photo of your QR code — to see your table number, check in, and the wedding program.</p>
+        <a class="btn-lg" href="/table">Find My Table</a>
+      </div>
 
-    <div class="weave-divider" aria-hidden="true"><span class="rule"></span></div>
-
-    <div id="photos" hidden>
-      <h3 class="hub-h3">Share Your Photos</h3>
-      <p class="hub-sub">Snapped something special? Upload all your memories here so everyone can see and relive the day together.</p>
-      <a class="btn-lg" id="photoAlbumBtn" href="#" target="_blank" rel="noopener">Upload All Your Memories Here</a>
+      <div>
+        <h3 class="hub-h3">Share Your Photos</h3>
+        <p class="hub-sub">Snapped something special? Add it here so everyone can see it right away.</p>
+        <label class="btn-lg" for="guestPhotoInput">Add Your Photo</label>
+        <input type="file" id="guestPhotoInput" accept="image/*" style="display:none;" />
+        <div class="photo-msg" id="guestPhotoMsg"></div>
+        <div class="photo-gallery" id="photoGallery"><p class="photo-gallery-empty">Loading…</p></div>
+        <p class="photo-album-link" id="photoAlbumWrap" hidden><a id="photoAlbumBtn" href="#" target="_blank" rel="noopener">View the full album &rarr;</a></p>
+      </div>
     </div>
   </section>
 
@@ -520,16 +545,69 @@
   }
   loadUpdates();
 
-  // ---------- Shared Photo Album ----------
-  // Only shown once Annie has set a link from /admin — no broken/empty
-  // button before then.
+  // ---------- Shared Photo Album (optional full-album link, admin-set) ----------
   fetch('/api/settings').then(function(r){ return r.json(); }).then(function(data){
     if (data.photoAlbumUrl){
       document.getElementById('photoAlbumBtn').href = data.photoAlbumUrl;
-      document.getElementById('photos').hidden = false;
+      document.getElementById('photoAlbumWrap').hidden = false;
     }
   }).catch(function(){ /* keep it hidden on failure */ });
 
+  // ---------- Share Your Photos: guests upload right here, and everyone
+  // sees a live gallery of the latest photos — no waiting, no separate
+  // album to hunt for. ----------
+  function loadPhotoGallery(){
+    fetch('/api/guest-photos?limit=24').then(function(r){ return r.json(); }).then(function(data){
+      var grid = document.getElementById('photoGallery');
+      var photos = data.photos || [];
+      if (!photos.length){
+        grid.innerHTML = '<p class="photo-gallery-empty">No photos yet — be the first to share one!</p>';
+        return;
+      }
+      grid.innerHTML = photos.map(function(p){
+        return '<img src="' + p.imageUrl + '" alt="" loading="lazy" />';
+      }).join('');
+    }).catch(function(){
+      document.getElementById('photoGallery').innerHTML = '<p class="photo-gallery-empty">Could not load photos — please refresh.</p>';
+    });
+  }
+  loadPhotoGallery();
+
+  document.getElementById('guestPhotoInput').addEventListener('change', function(){
+    var file = this.files && this.files[0];
+    var input = this;
+    if (!file) return;
+    var msgEl = document.getElementById('guestPhotoMsg');
+    msgEl.className = 'photo-msg';
+    msgEl.textContent = 'Uploading…';
+    var reader = new FileReader();
+    reader.onload = function(){
+      fetch('/api/guest-photos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: reader.result })
+      }).then(function(r){ return r.json().then(function(data){ return { ok: r.ok, data: data }; }); })
+        .then(function(res){
+          if (!res.ok){
+            msgEl.className = 'photo-msg error';
+            msgEl.textContent = (res.data && res.data.error) || 'Something went wrong — please try again.';
+            return;
+          }
+          msgEl.textContent = 'Thank you for sharing!';
+          loadPhotoGallery();
+          setTimeout(function(){ if (msgEl.textContent === 'Thank you for sharing!') msgEl.textContent = ''; }, 3000);
+        }).catch(function(){
+          msgEl.className = 'photo-msg error';
+          msgEl.textContent = 'Network hiccup — please try again in a moment.';
+        });
+    };
+    reader.onerror = function(){
+      msgEl.className = 'photo-msg error';
+      msgEl.textContent = 'Could not read that file — please try again.';
+    };
+    reader.readAsDataURL(file);
+    input.value = ''; // allow choosing the same file again later
+  });
 </script>
 </body>
 </html>

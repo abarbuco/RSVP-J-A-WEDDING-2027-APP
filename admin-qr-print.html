@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Print Guest QR Codes — Annie &amp; Jay</title>
+<meta name="robots" content="noindex, nofollow" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%92%8D%3C/text%3E%3C/svg%3E" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600&family=Jost:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ivory:#f6efe2; --paper:#fffcf6; --ink:#2b211a; --ink-soft:#6b5c4e;
+    --rust:#7a4a2e; --line:rgba(43,33,26,.15);
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --ivory:#231a14; --paper:#2b2019; --ink:#f3e9d8; --ink-soft:#cdb9a2;
+      --rust:#d99a6c; --line:rgba(243,233,216,.16);
+    }
+  }
+  *{ box-sizing:border-box; }
+  body{
+    margin:0; background:var(--ivory); color:var(--ink);
+    font-family:'Jost', ui-sans-serif, system-ui, sans-serif;
+    padding:24px 16px 60px;
+  }
+  .wrap{ max-width:960px; margin:0 auto; }
+  .topbar{ display:flex; justify-content:space-between; align-items:baseline; gap:12px; flex-wrap:wrap; margin-bottom:2px; }
+  h1{ font-family:'Cormorant Garamond', Georgia, serif; font-weight:600; font-size:1.9rem; margin:0; }
+  .toplinks{ font-size:.85rem; white-space:nowrap; }
+  .toplinks a{ color:var(--ink-soft); text-decoration:none; }
+  .toplinks a:hover{ color:var(--rust); }
+  .sub{ color:var(--ink-soft); font-size:.9rem; margin:0 0 20px; }
+
+  .controls{
+    display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:22px;
+    background:var(--paper); border:1px solid var(--line); border-radius:10px; padding:14px 16px;
+  }
+  .controls input[type="search"]{
+    flex:1; min-width:200px; font-family:'Jost', sans-serif; font-size:1rem; padding:10px 12px;
+    border:1px solid var(--line); border-radius:8px; background:var(--ivory); color:var(--ink);
+  }
+  button{
+    font-family:'Jost', sans-serif; font-size:.9rem; cursor:pointer;
+    border:1px solid var(--rust); background:var(--rust); color:#fff8ee;
+    padding:10px 18px; border-radius:999px; white-space:nowrap;
+  }
+  .count{ font-size:.85rem; color:var(--ink-soft); margin:0 0 16px; }
+
+  .sheet{ display:flex; flex-wrap:wrap; gap:16px; }
+  .card{
+    width:230px; background:var(--paper); border:1px solid var(--line); border-radius:12px;
+    padding:18px 14px; text-align:center;
+  }
+  .card img{ width:150px; height:150px; display:block; margin:0 auto 10px; }
+  .card .pname{ font-family:'Cormorant Garamond', Georgia, serif; font-weight:600; font-size:1.05rem; margin:0 0 4px; line-height:1.25; }
+  .card .pcaption{ font-size:.68rem; color:var(--ink-soft); letter-spacing:.02em; margin:0 0 8px; }
+  .card .ptable{ font-size:.85rem; font-weight:600; color:var(--rust); }
+  .card .ptable.tbd{ color:var(--ink-soft); font-weight:400; font-style:italic; font-size:.78rem; }
+
+  .empty{ text-align:center; color:var(--ink-soft); padding:40px 0; }
+
+  @media print{
+    body{ background:#fff; color:#000; padding:0; }
+    .no-print{ display:none !important; }
+    .wrap{ max-width:none; }
+    .sheet{ gap:10px; }
+    .card{ border:1px solid #ccc; break-inside:avoid; page-break-inside:avoid; }
+    .card .pcaption, .card .ptable{ color:#333; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar no-print">
+    <h1>Print Guest QR Codes</h1>
+    <span class="toplinks"><a href="/admin">Full Admin</a> · <a href="/admin/checkin">Guest Check-In</a></span>
+  </div>
+  <p class="sub no-print">Annie &amp; Jay · #AJCloseTheGap — each card has a guest's personal QR code. Print onto invitations, or cut out and use as table/escort cards.</p>
+
+  <div class="controls no-print">
+    <input type="search" id="search" placeholder="Filter by name (leave blank to print everyone)…" autocomplete="off" />
+    <button id="printBtn">Print</button>
+  </div>
+  <p class="count no-print" id="count"></p>
+
+  <div class="sheet" id="sheet"><p class="empty">Loading…</p></div>
+</div>
+
+<script>
+  var allSeating = [];
+  var sheetEl = document.getElementById('sheet');
+  var searchEl = document.getElementById('search');
+  var countEl = document.getElementById('count');
+
+  function esc(s){ return String(s).replace(/</g,'&lt;'); }
+  function normName(n){ return String(n||'').trim().toLowerCase().replace(/\s+/g,' '); }
+
+  function render(){
+    var q = normName(searchEl.value);
+    var rows = q ? allSeating.filter(function(s){ return normName(s.name).indexOf(q) !== -1; }) : allSeating;
+    if (!rows.length){
+      sheetEl.innerHTML = '<p class="empty">' + (q ? 'No matching guest found.' : 'No guests on the seating list yet — add some in Admin first.') + '</p>';
+      countEl.textContent = '';
+      return;
+    }
+    countEl.textContent = rows.length === 1 ? '1 card ready to print' : (rows.length + ' cards ready to print');
+    sheetEl.innerHTML = rows.map(function(s){
+      var tableHtml = s.table
+        ? '<div class="ptable">Table ' + esc(s.table) + '</div>'
+        : '<div class="ptable tbd">Table to be announced</div>';
+      return '<div class="card">' +
+        '<img src="/api/qr/' + s.id + '" alt="QR code for ' + esc(s.name) + '" />' +
+        '<p class="pname">' + esc(s.name) + '</p>' +
+        '<p class="pcaption">Scan for your table &amp; program</p>' +
+        tableHtml +
+        '</div>';
+    }).join('');
+  }
+
+  searchEl.addEventListener('input', render);
+  document.getElementById('printBtn').addEventListener('click', function(){ window.print(); });
+
+  var presetQ = new URLSearchParams(location.search).get('q');
+  if (presetQ) searchEl.value = presetQ;
+
+  fetch('/api/admin/seating').then(function(r){ return r.json(); }).then(function(data){
+    allSeating = data.seating || [];
+    render();
+  }).catch(function(){
+    sheetEl.innerHTML = '<p class="empty">Could not load the seating list — please refresh.</p>';
+  });
+</script>
+</body>
+</html>

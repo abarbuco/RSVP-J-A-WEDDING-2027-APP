@@ -185,6 +185,7 @@
   }
   .countdown .tile .num{ font-family:'Cormorant Garamond', serif; font-size:1.7rem; font-weight:600; display:block; }
   .countdown .tile .unit{ font-size:.62rem; letter-spacing:.14em; text-transform:uppercase; opacity:.85; }
+  .countdown-tz-note{ margin:14px 0 0; font-size:.78rem; color:var(--ink-soft); font-style:italic; }
   .thank-you-msg{ font-family:'Cormorant Garamond', serif; font-size:1.5rem; color:var(--ink); padding:0 10px; line-height:1.5; }
   .thank-you-sub{ display:block; font-family:'Jost', sans-serif; font-size:.9rem; color:var(--ink-soft); margin-top:10px; line-height:1.5; }
 
@@ -428,6 +429,7 @@
       <div class="tile"><span class="num" id="cd-mins">00</span><span class="unit">Mins</span></div>
       <div class="tile"><span class="num" id="cd-secs">00</span><span class="unit">Secs</span></div>
     </div>
+    <p class="countdown-tz-note" id="countdownTzNote">Philippine time (GMT+8)</p>
     <p class="thank-you-msg" id="thankYouMsg" hidden>Thank you for celebrating with us! &#10084;<br />&mdash; Annie &amp; Jay
       <span class="thank-you-sub">This site stays up as our memory — photos are always here.</span>
     </p>
@@ -438,6 +440,7 @@
     <p class="sub">News, your table, program, and photos — all here.</p>
 
     <h3 class="hub-h3">Latest News</h3>
+    <p class="hub-note">Sharing more than 5 photos or any videos? Download the Google Drive app (<a href="https://apps.apple.com/us/app/google-drive/id507874739" target="_blank" rel="noopener">iPhone</a> &middot; <a href="https://play.google.com/store/apps/details?id=com.google.android.apps.docs" target="_blank" rel="noopener">Android</a>) and add them to our <a href="https://drive.google.com/drive/folders/1bW2v_oK0EhicjtXpN5mHZeFi5qUTXRqa?usp=drive_link" target="_blank" rel="noopener">album</a> directly.</p>
     <div class="updates-list" id="updatesList"><p class="updates-empty">No updates yet — check back closer to the date.</p></div>
 
     <div class="weave-divider" aria-hidden="true"><span class="rule"></span></div>
@@ -588,6 +591,7 @@
       clearInterval(countdownTimer);
       document.getElementById('countdown').hidden = true;
       document.getElementById('countdownLabel').hidden = true;
+      document.getElementById('countdownTzNote').hidden = true;
       document.getElementById('thankYouMsg').hidden = false;
       return;
     }

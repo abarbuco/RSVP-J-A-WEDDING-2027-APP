@@ -456,7 +456,7 @@
       <div>
         <h3 class="hub-h3">Share Your Photos</h3>
         <p class="hub-sub">Snap something special? Add it here for everyone to see.</p>
-        <p class="hub-note">Add up to 5 photos here — they'll join our <a href="https://drive.google.com/drive/folders/1bW2v_oK0EhicjtXpN5mHZeFi5qUTXRqa?usp=drive_link" target="_blank" rel="noopener">Google Drive album</a> the next day. For more, or for videos, download the Google Drive app (<a href="https://apps.apple.com/us/app/google-drive/id507874739" target="_blank" rel="noopener">iPhone</a> &middot; <a href="https://play.google.com/store/apps/details?id=com.google.android.apps.docs" target="_blank" rel="noopener">Android</a>) and add them there.</p>
+        <p class="hub-note">Add up to 5 photos here — they'll join our <a href="https://drive.google.com/drive/folders/1bW2v_oK0EhicjtXpN5mHZeFi5qUTXRqa?usp=drive_link" target="_blank" rel="noopener">Google Drive album</a> the next day.</p>
         <p class="closed-note" id="addPhotoClosedNote" hidden>Thank you for sharing! Uploads are closed — photos are still here.</p>
         <div class="photo-gallery" id="photoGallery"><p class="photo-gallery-empty">Loading…</p></div>
         <div class="photo-gallery-nav" id="photoGalleryNav" hidden>
@@ -849,7 +849,7 @@
     // straight to the Google Drive album instead of silently failing.
     if (total > 5){
       msgEl.className = 'photo-msg error';
-      msgEl.innerHTML = 'Please choose 5 photos or fewer here. For more, or for videos, download the Google Drive app (<a href="https://apps.apple.com/us/app/google-drive/id507874739" target="_blank" rel="noopener">iPhone</a> &middot; <a href="https://play.google.com/store/apps/details?id=com.google.android.apps.docs" target="_blank" rel="noopener">Android</a>) and add them to our <a href="https://drive.google.com/drive/folders/1bW2v_oK0EhicjtXpN5mHZeFi5qUTXRqa?usp=drive_link" target="_blank" rel="noopener">album</a>.';
+      msgEl.innerHTML = 'Please choose 5 photos or fewer here. For more, or for videos, please add them to our <a href="https://drive.google.com/drive/folders/1bW2v_oK0EhicjtXpN5mHZeFi5qUTXRqa?usp=drive_link" target="_blank" rel="noopener">Google Drive album</a> directly.';
       input.value = '';
       return;
     }

@@ -59,6 +59,20 @@ function normName(n) {
   return String(n || "").trim().toLowerCase().replace(/\s+/g, " ");
 }
 
+// The wedding day itself, in the venue's own timezone — guests can only
+// self check-in on this calendar date (Asia/Manila), regardless of what
+// timezone their phone thinks it's in.
+const WEDDING_DATE_MANILA = "2027-02-21";
+function isWeddingDayInManila() {
+  const todayManila = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Manila",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+  return todayManila === WEDDING_DATE_MANILA;
+}
+
 // Add or update one seating entry by name (case-insensitive match).
 function upsertSeating(list, rawName, rawTable) {
   const name = String(rawName || "").trim().slice(0, 80);
@@ -267,7 +281,14 @@ function findSeatingMatches(rawName) {
 app.get("/api/table", (req, res) => {
   const { exact, candidates } = findSeatingMatches(req.query.name);
   if (exact) {
-    return res.json({ found: true, name: exact.name, table: exact.table || null });
+    return res.json({
+      found: true,
+      id: exact.id,
+      name: exact.name,
+      table: exact.table || null,
+      checkedIn: !!exact.checkedIn,
+      checkedInAt: exact.checkedInAt || null,
+    });
   }
   if (candidates.length > 1) {
     return res.json({ found: false, multiple: candidates.slice(0, 8) });
@@ -298,7 +319,38 @@ app.get("/api/table/:id", (req, res) => {
   const list = readSeating();
   const entry = list.find((s) => s.id === req.params.id);
   if (!entry) return res.status(404).json({ found: false });
-  res.json({ found: true, name: entry.name, table: entry.table || null });
+  res.json({
+    found: true,
+    id: entry.id,
+    name: entry.name,
+    table: entry.table || null,
+    checkedIn: !!entry.checkedIn,
+    checkedInAt: entry.checkedInAt || null,
+  });
+});
+
+// Self check-in: a guest taps this after scanning their QR code (or finding
+// their table by name) to let Annie know they've arrived. Only allowed on
+// the wedding day itself so it can't be tapped early by accident — checked
+// server-side too, not just hidden in the UI, in case someone hits the API
+// directly.
+app.post("/api/checkin/:id", (req, res) => {
+  if (!isWeddingDayInManila()) {
+    return res.status(403).json({
+      error: "Check-in opens on the day of the wedding — February 21, 2027.",
+      checkedIn: false,
+    });
+  }
+  const list = readSeating();
+  const entry = list.find((s) => s.id === req.params.id);
+  if (!entry) return res.status(404).json({ error: "Guest not found.", checkedIn: false });
+
+  if (!entry.checkedIn) {
+    entry.checkedIn = true;
+    entry.checkedInAt = new Date().toISOString();
+    writeSeating(list);
+  }
+  res.json({ ok: true, checkedIn: true, checkedInAt: entry.checkedInAt, name: entry.name });
 });
 
 // The day's run-of-show — shown alongside the table lookup. Editable from
@@ -359,6 +411,8 @@ app.get("/api/admin/rsvps", (req, res) => {
           message: e.message,
           seatingId: seat ? seat.id : null,
           table: seat ? seat.table || null : null,
+          checkedIn: seat ? !!seat.checkedIn : false,
+          checkedInAt: seat ? seat.checkedInAt || null : null,
           submittedAt: e.submittedAt,
         };
       }),
@@ -517,6 +571,19 @@ app.get("/api/admin/qr/:id", async (req, res) => {
 
 app.get("/healthz", (req, res) => res.json({ ok: true }));
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`AJ Close The Gap wedding site listening on port ${PORT}`);
 });
+
+// Exit cleanly when Railway stops this container during a redeploy (it
+// sends SIGTERM to the old version once the new one is up). Without this,
+// the process just gets killed and the shutdown can look like a crash in
+// logs/alerts, even though it's a normal, expected part of every deploy.
+function shutdown(signal) {
+  console.log(`Received ${signal}, shutting down gracefully.`);
+  server.close(() => process.exit(0));
+  // Safety net in case something keeps an open connection alive.
+  setTimeout(() => process.exit(0), 5000).unref();
+}
+process.on("SIGTERM", () => shutdown("SIGTERM"));
+process.on("SIGINT", () => shutdown("SIGINT"));

@@ -276,6 +276,7 @@
   .photo-msg{ margin-top:12px; font-size:.95rem; line-height:1.5; }
   .photo-msg:empty{ margin-top:0; } /* keeps the button bottom-aligned with "Find My Table" when there's no message showing */
   .photo-msg.error{ color:var(--rust-deep); }
+  .photo-msg a{ color:inherit; text-decoration:underline; }
   .photo-album-link{ display:block; text-align:center; margin-top:14px; font-size:.92rem; }
   .photo-album-link a{ color:var(--rust); }
 
@@ -452,7 +453,7 @@
       <div>
         <h3 class="hub-h3">Share Your Photos</h3>
         <p class="hub-sub">Snap something special? Add it here for everyone to see.</p>
-        <p class="hub-note">Photos also go to our <a href="https://drive.google.com/drive/folders/1bW2v_oK0EhicjtXpN5mHZeFi5qUTXRqa?usp=drive_link" target="_blank" rel="noopener">Google Drive album</a> the next day — you can add videos there too.</p>
+        <p class="hub-note">Add up to 5 photos here — they'll join our <a href="https://drive.google.com/drive/folders/1bW2v_oK0EhicjtXpN5mHZeFi5qUTXRqa?usp=drive_link" target="_blank" rel="noopener">Google Drive album</a> the next day. More photos or any videos? Please add them there directly.</p>
         <p class="closed-note" id="addPhotoClosedNote" hidden>Thank you for sharing! Uploads are closed — photos are still here.</p>
         <div class="photo-gallery" id="photoGallery"><p class="photo-gallery-empty">Loading…</p></div>
         <div class="photo-gallery-nav" id="photoGalleryNav" hidden>
@@ -838,16 +839,19 @@
     msgEl.className = 'photo-msg';
 
     var total = files.length;
+
+    // Guests can only add up to 5 photos here at a time — for more photos,
+    // or for any videos (this box doesn't accept those), we point them
+    // straight to the Google Drive album instead of silently failing.
+    if (total > 5){
+      msgEl.className = 'photo-msg error';
+      msgEl.innerHTML = 'Please choose 5 photos or fewer here. For more photos or any videos, add them directly to our <a href="https://drive.google.com/drive/folders/1bW2v_oK0EhicjtXpN5mHZeFi5qUTXRqa?usp=drive_link" target="_blank" rel="noopener">Google Drive album</a>.';
+      input.value = '';
+      return;
+    }
+
     var succeeded = 0;
     var firstError = null;
-    var startChain = Promise.resolve();
-
-    if (total >= 10){
-      msgEl.textContent = 'That\'s a lot of photos! Tip: for 10 or more, our Google Drive album is quicker.';
-      startChain = startChain.then(function(){
-        return new Promise(function(resolve){ setTimeout(resolve, 1800); });
-      });
-    }
 
     files.reduce(function(chain, file, i){
       return chain.then(function(){
@@ -858,7 +862,7 @@
           if (!firstError) firstError = err.message;
         });
       });
-    }, startChain).then(function(){
+    }, Promise.resolve()).then(function(){
       if (succeeded > 0) loadPhotoGallery(true);
       if (succeeded === total){
         msgEl.className = 'photo-msg';

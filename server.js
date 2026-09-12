@@ -212,6 +212,12 @@ app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "index.html"));
 });
 
+// The RSVP form now lives on its own page, linked from a big "RSVP Now"
+// button on the homepage, so the homepage itself can stay short and simple.
+app.get("/rsvp", (req, res) => {
+  res.sendFile(path.join(__dirname, "rsvp.html"));
+});
+
 // Vendored locally (not loaded from a CDN) so the "upload your QR code
 // image" feature on /table keeps working even on a venue's flaky WiFi or a
 // guest's phone that blocks third-party scripts.

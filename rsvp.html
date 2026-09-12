@@ -1,0 +1,562 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>RSVP — Annie &amp; Jay's Wedding</title>
+<meta name="description" content="RSVP for Annie Queen &amp; Jay's wedding — February 21, 2027, Plaza Ibarra, Quezon City." />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%92%8D%3C/text%3E%3C/svg%3E" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,500&family=Jost:wght@400;500;600&family=Mrs+Saint+Delafield&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ivory:#f6efe2;
+    --paper:#fffcf6;
+    --ink:#2b211a;
+    --ink-soft:#6b5c4e;
+    --rust:#7a4a2e;
+    --rust-deep:#5c351f;
+    --gold:#a8792e;
+    --gold-soft:#c99a4a;
+    --olive:#556339;
+    --line:rgba(43,33,26,.15);
+    --shadow: 0 18px 40px -22px rgba(43,33,26,.35);
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --ivory:#231a14;
+      --paper:#2b2019;
+      --ink:#f3e9d8;
+      --ink-soft:#cdb9a2;
+      --rust:#d99a6c;
+      --rust-deep:#e8b088;
+      --gold:#d3a355;
+      --gold-soft:#e6c467;
+      --olive:#a3b37a;
+      --line:rgba(243,233,216,.16);
+      --shadow: 0 18px 40px -20px rgba(0,0,0,.55);
+    }
+  }
+  *{ box-sizing:border-box; }
+  html{ scroll-behavior:smooth; }
+  body{
+    margin:0;
+    background:var(--ivory);
+    color:var(--ink);
+    font-family:'Jost', ui-sans-serif, system-ui, sans-serif;
+    font-size:17px;
+    padding-inline:16px;
+    -webkit-font-smoothing:antialiased;
+  }
+  body::before{
+    content:"";
+    position:fixed;
+    inset:0;
+    z-index:-1;
+    background-image:
+      repeating-linear-gradient(45deg, var(--line) 0 2px, transparent 2px 22px),
+      repeating-linear-gradient(-45deg, var(--line) 0 2px, transparent 2px 22px),
+      repeating-linear-gradient(45deg, transparent 0 9px, var(--line) 9px 11px, transparent 11px 22px),
+      repeating-linear-gradient(-45deg, transparent 0 9px, var(--line) 9px 11px, transparent 11px 22px);
+    opacity:.4;
+  }
+  .page{ max-width:600px; margin:0 auto; padding-block:32px 60px; }
+  .card{
+    background:var(--paper);
+    border:1px solid var(--line);
+    border-radius:6px;
+    box-shadow:var(--shadow);
+    padding:32px 26px;
+  }
+  h1,h2,h3{ font-family:'Cormorant Garamond', Georgia, serif; font-weight:600; margin:0; text-wrap:balance; }
+
+  .backbar{ text-align:center; margin-bottom:20px; }
+  .back-btn{
+    display:inline-flex; align-items:center; gap:6px;
+    padding:10px 18px; border-radius:999px; border:1px solid var(--line);
+    background:var(--paper); color:var(--ink); text-decoration:none;
+    font-family:'Jost', sans-serif; font-size:.92rem;
+  }
+  .back-btn:hover{ border-color:var(--rust); color:var(--rust); }
+
+  .header{ text-align:center; margin-bottom:22px; }
+  .header h1{ font-size:1.9rem; color:var(--rust); margin-bottom:4px; }
+  .header .sub{ color:var(--ink-soft); font-size:.95rem; }
+
+  .sub{ color:var(--ink-soft); font-size:.95rem; margin-bottom:22px; }
+
+  .weave-divider{
+    display:flex; align-items:center; justify-content:center; gap:10px;
+    margin-block:24px; color:var(--gold-soft);
+  }
+  .weave-divider .rule{ flex:1; height:1px; background:linear-gradient(90deg, transparent, var(--line) 20%, var(--line) 80%, transparent); max-width:120px; }
+
+  /* ---------- Form fields ---------- */
+  .field{ margin-bottom:18px; }
+  .field label{ display:block; font-size:.85rem; letter-spacing:.05em; text-transform:uppercase; color:var(--ink-soft); margin-bottom:6px; }
+  .field-hint{ margin:6px 2px 0; font-size:.82rem; color:var(--ink-soft); line-height:1.5; }
+  .field-hint.error-hint{ color:var(--rust-deep); }
+  .field-hint.error-hint[hidden]{ display:none; }
+  .name-autocomplete{ position:relative; }
+  .name-suggestions{
+    position:absolute; left:0; right:0; top:calc(100% + 4px); z-index:20;
+    background:var(--paper); border:1px solid var(--line); border-radius:8px;
+    box-shadow:var(--shadow); overflow:hidden; max-height:260px; overflow-y:auto;
+  }
+  .name-suggestions button{
+    display:block; width:100%; text-align:left; padding:14px 16px; font-size:1rem;
+    font-family:'Jost', sans-serif; color:var(--ink); background:none; border:0;
+    border-bottom:1px solid var(--line); cursor:pointer;
+  }
+  .name-suggestions button:last-child{ border-bottom:0; }
+  .name-suggestions button:hover, .name-suggestions button:active, .name-suggestions button.active{
+    background:rgba(122,74,46,.1);
+  }
+  .field input[type="text"], .field textarea, .field select{
+    width:100%;
+    font-family:'Jost', sans-serif;
+    font-size:1.05rem;
+    padding:13px 14px;
+    border:1px solid var(--line);
+    border-radius:8px;
+    background:var(--paper);
+    color:var(--ink);
+  }
+  .field textarea{ resize:vertical; min-height:80px; }
+  .radio-row{ display:flex; gap:10px; flex-wrap:wrap; }
+  .radio-row label{
+    flex:1; min-width:150px;
+    display:flex; align-items:center; gap:8px;
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:14px 14px;
+    cursor:pointer;
+    text-transform:none; letter-spacing:0; font-size:1rem; color:var(--ink);
+  }
+  .radio-row input{ accent-color:var(--rust); width:20px; height:20px; }
+  .radio-row label.active{ border-color:var(--rust); background:rgba(122,74,46,.08); }
+  #guestCountField{ display:none; }
+  #partyNamesField[hidden]{ display:none; }
+  .party-name-input{
+    width:100%; font-family:inherit; font-size:1.05rem; padding:13px 14px;
+    border:1px solid var(--line); border-radius:8px; background:var(--paper); color:var(--ink);
+    margin-bottom:8px;
+  }
+
+  .btn-lg{
+    display:block; width:100%; text-align:center; box-sizing:border-box;
+    padding:16px; border-radius:8px; border:1px solid var(--rust);
+    background:var(--rust); color:#fff8ee; font-family:'Jost', sans-serif;
+    font-size:1.1rem; font-weight:600; letter-spacing:.01em; cursor:pointer;
+    text-decoration:none;
+  }
+  .btn-lg:hover{ background:var(--rust-deep); border-color:var(--rust-deep); }
+  .btn-lg:disabled{ opacity:.6; }
+
+  .form-msg{ margin-top:14px; padding:14px 16px; border-radius:8px; font-size:.95rem; display:none; line-height:1.5; }
+  .form-msg.error{ display:block; background:rgba(122,74,46,.12); color:var(--rust-deep); }
+  .form-msg.success{ display:block; background:rgba(107,111,58,.12); color:var(--olive); }
+
+  .qr-result{
+    margin-top:20px; padding:22px; text-align:center;
+    border:1px solid var(--line); border-radius:8px; background:var(--ivory);
+  }
+  .qr-result-label{ font-size:.82rem; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-soft); margin:0 0 12px; }
+  .qr-result-img{ display:block; margin:0 auto; border-radius:4px; background:var(--paper); }
+  .qr-result-hint{ margin:12px 0 0; font-size:.9rem; color:var(--ink-soft); line-height:1.55; }
+  .qr-result-hint a{ color:var(--rust); }
+
+  .decline-result{
+    margin-top:20px; padding:22px 24px; text-align:center;
+    border:1px solid var(--line); border-radius:8px; background:var(--ivory);
+  }
+  .decline-result-title{ font-family:'Cormorant Garamond', Georgia, serif; font-weight:600; font-size:1.2rem; color:var(--rust); margin:0 0 8px; }
+  .decline-result-text{ font-size:.95rem; color:var(--ink-soft); line-height:1.6; margin:0; }
+
+  .stats-row{ display:flex; gap:14px; margin:24px 0; flex-wrap:wrap; }
+  .stat{ flex:1; min-width:120px; text-align:center; border:1px solid var(--line); border-radius:8px; padding:16px 8px; background:var(--ivory); }
+  .stat .n{ font-family:'Cormorant Garamond', serif; font-size:1.9rem; font-weight:600; color:var(--rust); font-variant-numeric: tabular-nums; }
+  .stat .l{ font-size:.72rem; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-soft); }
+
+  .guest-wall-label{ font-size:.82rem; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-soft); margin-bottom:10px; }
+  .guest-wall{ display:flex; flex-wrap:wrap; gap:8px; }
+  .guest-pill{
+    padding:7px 14px; border-radius:999px; background:var(--ivory); border:1px solid var(--line);
+    font-size:.9rem; color:var(--ink);
+  }
+  .guest-wall .empty{ color:var(--ink-soft); font-style:italic; font-size:.92rem; }
+
+  .backlink{ display:block; text-align:center; margin-top:26px; }
+
+  a{ color:inherit; }
+  :focus-visible{ outline:2px solid var(--gold); outline-offset:2px; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="backbar">
+    <a class="back-btn" href="/">&larr; Back to Home</a>
+  </div>
+
+  <div class="header">
+    <h1>RSVP</h1>
+    <p class="sub">Annie &amp; Jay &middot; #AJCloseTheGap</p>
+  </div>
+
+  <section class="card">
+    <p class="sub" style="margin-bottom:22px;">Kindly respond at your earliest so we can plan the celebration. <em>(RSVP deadline to be announced.)</em></p>
+
+    <form id="rsvpForm" novalidate>
+      <div class="field">
+        <label for="name">Your name</label>
+        <div class="name-autocomplete">
+          <input type="text" id="name" name="name" placeholder="Start typing your name…" autocomplete="off" required />
+          <div class="name-suggestions" id="nameSuggestions" hidden></div>
+        </div>
+        <p class="field-hint">Start typing and tap your name if it appears — that's the easiest way to match you to your table.</p>
+        <p class="field-hint error-hint" id="nameLookupMsg" hidden></p>
+      </div>
+
+      <div class="field">
+        <label>Will you be joining us?</label>
+        <div class="radio-row">
+          <label id="labelYes"><input type="radio" name="attending" value="yes" required /> Joyfully accepts</label>
+          <label id="labelNo"><input type="radio" name="attending" value="no" /> Regretfully declines</label>
+        </div>
+      </div>
+
+      <div class="field" id="guestCountField">
+        <label for="guests">Number of guests (including you)</label>
+        <select id="guests" name="guests">
+          <option value="1">Just me</option>
+          <option value="2">2</option>
+          <option value="3">3</option>
+          <option value="4">4</option>
+          <option value="5">5</option>
+        </select>
+      </div>
+
+      <div class="field" id="partyNamesField" hidden>
+        <label>Names of your additional guests</label>
+        <div id="partyNamesList"></div>
+        <p class="field-hint">This helps us prepare seating and QR codes for your whole party.</p>
+      </div>
+
+      <div class="field">
+        <label for="message">Message for Annie &amp; Jay (optional)</label>
+        <textarea id="message" name="message" placeholder="A well-wish, a song request, a dietary note…"></textarea>
+      </div>
+
+      <button type="submit" class="btn-lg rsvp-submit">Send our RSVP</button>
+      <div class="form-msg" id="formMsg" role="status"></div>
+    </form>
+
+    <div class="qr-result" id="qrResult" hidden>
+      <p class="qr-result-label">Your personal QR code</p>
+      <img id="qrResultImg" class="qr-result-img" width="170" height="170" alt="Your personal QR code — scan to find your table" />
+      <p class="qr-result-hint">Save a screenshot of this, or take a photo — scan it on the day (or upload it back on the home page) to see your whole party's table numbers, check in, and the wedding program. You can also just visit <a id="qrResultLink" href="#">this link</a> anytime.</p>
+    </div>
+
+    <div class="decline-result" id="declineResult" hidden>
+      <p class="decline-result-title">We understand, and we're so thankful you let us know</p>
+      <p class="decline-result-text">You'll be missed, but we truly appreciate you taking the time to respond. Wishing you all the best, and we hope to celebrate with you again soon.</p>
+    </div>
+
+    <div class="weave-divider" aria-hidden="true"><span class="rule"></span></div>
+
+    <div class="stats-row" id="statsRow">
+      <div class="stat"><span class="n" id="statGuests">–</span><span class="l">Joining</span></div>
+      <div class="stat"><span class="n" id="statFamilies">–</span><span class="l">Responses</span></div>
+    </div>
+
+    <p class="guest-wall-label">Joining the celebration</p>
+    <div class="guest-wall" id="guestWall"><span class="empty">Be the first to RSVP!</span></div>
+  </section>
+
+  <p class="backlink"><a class="back-btn" href="/">&larr; Back to Home</a></p>
+
+</div>
+
+<script>
+  // ---------- Name autocomplete (suggestions from the seating list) ----------
+  (function(){
+    var nameInput = document.getElementById('name');
+    var box = document.getElementById('nameSuggestions');
+    var debounceTimer = null;
+    var activeIndex = -1;
+
+    function hideBox(){
+      box.hidden = true;
+      box.innerHTML = '';
+      activeIndex = -1;
+    }
+
+    function showNames(names){
+      if (!names.length){ hideBox(); return; }
+      box.innerHTML = '';
+      names.forEach(function(n){
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.textContent = n;
+        btn.addEventListener('click', function(){
+          nameInput.value = n;
+          hideBox();
+          lookupPrimaryName(n);
+        });
+        box.appendChild(btn);
+      });
+      box.hidden = false;
+    }
+
+    nameInput.addEventListener('input', function(){
+      var q = nameInput.value.trim();
+      clearTimeout(debounceTimer);
+      if (q.length < 2){ hideBox(); return; }
+      debounceTimer = setTimeout(function(){
+        fetch('/api/seating-names?q=' + encodeURIComponent(q))
+          .then(function(r){ return r.json(); })
+          .then(function(data){ showNames(data.names || []); })
+          .catch(function(){ hideBox(); });
+      }, 150);
+    });
+
+    // Hide on outside click; a small delay on blur lets a click on a
+    // suggestion register first.
+    nameInput.addEventListener('blur', function(){
+      setTimeout(hideBox, 150);
+      lookupPrimaryName(nameInput.value);
+    });
+    document.addEventListener('click', function(e){
+      if (e.target !== nameInput && !box.contains(e.target)) hideBox();
+    });
+  })();
+
+  // ---------- Reusable name-suggestion autocomplete (for party-member fields) ----------
+  // The wedding is invite-only: guests can only RSVP with names that are
+  // already on Annie & Jay's uploaded guest list, so every name field
+  // (the respondent's own name, and each additional party member) offers
+  // suggestions pulled from that same list rather than accepting free text.
+  function attachGuestAutocomplete(inputEl){
+    var box = document.createElement('div');
+    box.className = 'name-suggestions party-suggestions';
+    box.hidden = true;
+    inputEl.insertAdjacentElement('afterend', box);
+    var debounceTimer = null;
+
+    function hideBox(){ box.hidden = true; box.innerHTML = ''; }
+    function showNames(names){
+      if (!names.length){ hideBox(); return; }
+      box.innerHTML = '';
+      names.forEach(function(n){
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.textContent = n;
+        btn.addEventListener('click', function(){
+          inputEl.value = n;
+          hideBox();
+        });
+        box.appendChild(btn);
+      });
+      box.hidden = false;
+    }
+    inputEl.addEventListener('input', function(){
+      var q = inputEl.value.trim();
+      clearTimeout(debounceTimer);
+      if (q.length < 2){ hideBox(); return; }
+      debounceTimer = setTimeout(function(){
+        fetch('/api/seating-names?q=' + encodeURIComponent(q))
+          .then(function(r){ return r.json(); })
+          .then(function(data){ showNames(data.names || []); })
+          .catch(function(){ hideBox(); });
+      }, 150);
+    });
+    inputEl.addEventListener('blur', function(){ setTimeout(hideBox, 150); });
+  }
+
+  // ---------- Attending toggle ----------
+  var guestCountField = document.getElementById('guestCountField');
+  var labelYes = document.getElementById('labelYes');
+  var labelNo = document.getElementById('labelNo');
+  var guestsSelect = document.getElementById('guests');
+  var partyNamesField = document.getElementById('partyNamesField');
+  var partyNamesList = document.getElementById('partyNamesList');
+  var nameLookupMsg = document.getElementById('nameLookupMsg');
+
+  // Only names already on Annie & Jay's guest list may RSVP. Looking a name
+  // up also tells us how many guests that invitation is allowed to bring,
+  // which caps the "Number of guests" dropdown below.
+  var currentMaxGuests = 1;
+  var lastLookedUpName = '';
+
+  function rebuildGuestsSelect(max){
+    var previous = guestsSelect.value;
+    var html = '<option value="1">Just me</option>';
+    for (var i = 2; i <= max; i++){
+      html += '<option value="' + i + '">' + i + '</option>';
+    }
+    guestsSelect.innerHTML = html;
+    guestsSelect.value = (parseInt(previous, 10) <= max) ? previous : '1';
+  }
+
+  function lookupPrimaryName(value){
+    var v = String(value || '').trim();
+    if (!v){
+      nameLookupMsg.hidden = true;
+      currentMaxGuests = 1;
+      rebuildGuestsSelect(1);
+      renderPartyNameFields();
+      return;
+    }
+    if (v === lastLookedUpName) return;
+    lastLookedUpName = v;
+    fetch('/api/guest-lookup?name=' + encodeURIComponent(v))
+      .then(function(r){ return r.json(); })
+      .then(function(data){
+        if (data.found){
+          nameLookupMsg.hidden = true;
+          currentMaxGuests = data.maxGuests || 1;
+        } else {
+          nameLookupMsg.hidden = false;
+          nameLookupMsg.textContent = "We couldn't find this name on our guest list. Please check the spelling, or reach out to Annie & Jay if you think this is a mistake.";
+          currentMaxGuests = 1;
+        }
+        rebuildGuestsSelect(currentMaxGuests);
+        renderPartyNameFields();
+      })
+      .catch(function(){ /* fail quiet — the server still validates on submit */ });
+  }
+
+  // Show one name field per additional guest beyond the person filling out
+  // the form (headcount - 1), preserving anything already typed if the
+  // headcount changes.
+  function renderPartyNameFields(){
+    var count = Math.max(0, (parseInt(guestsSelect.value, 10) || 1) - 1);
+    var existing = Array.prototype.slice.call(partyNamesList.querySelectorAll('input')).map(function(inp){ return inp.value; });
+    if (count <= 0){
+      partyNamesField.hidden = true;
+      partyNamesList.innerHTML = '';
+      return;
+    }
+    partyNamesField.hidden = false;
+    var html = '';
+    for (var i = 0; i < count; i++){
+      var val = (existing[i] || '').replace(/"/g, '&quot;');
+      html += '<div class="name-autocomplete"><input type="text" class="party-name-input" placeholder="Guest ' + (i + 2) + '’s name" value="' + val + '" autocomplete="off" /></div>';
+    }
+    partyNamesList.innerHTML = html;
+    Array.prototype.slice.call(partyNamesList.querySelectorAll('.party-name-input')).forEach(attachGuestAutocomplete);
+  }
+  guestsSelect.addEventListener('change', renderPartyNameFields);
+
+  document.querySelectorAll('input[name="attending"]').forEach(function(radio){
+    radio.addEventListener('change', function(){
+      guestCountField.style.display = (this.value === 'yes') ? 'block' : 'none';
+      labelYes.classList.toggle('active', this.value === 'yes');
+      labelNo.classList.toggle('active', this.value === 'no');
+      if (this.value === 'yes') {
+        renderPartyNameFields();
+      } else {
+        partyNamesField.hidden = true;
+        partyNamesList.innerHTML = '';
+      }
+    });
+  });
+
+  // ---------- RSVP submit ----------
+  var form = document.getElementById('rsvpForm');
+  var formMsg = document.getElementById('formMsg');
+  form.addEventListener('submit', function(e){
+    e.preventDefault();
+    formMsg.className = 'form-msg';
+    var attendingEl = form.querySelector('input[name="attending"]:checked');
+    var partyNames = Array.prototype.slice.call(partyNamesList.querySelectorAll('input'))
+      .map(function(inp){ return inp.value.trim(); })
+      .filter(function(v){ return v.length > 0; });
+    var payload = {
+      name: document.getElementById('name').value.trim(),
+      attending: attendingEl ? attendingEl.value : null,
+      guests: document.getElementById('guests').value,
+      partyNames: partyNames,
+      message: document.getElementById('message').value.trim()
+    };
+    if (!payload.name || !payload.attending) {
+      formMsg.textContent = "Please fill in your name and let us know if you can make it.";
+      formMsg.className = 'form-msg error';
+      return;
+    }
+    var btn = form.querySelector('.rsvp-submit');
+    btn.disabled = true; btn.textContent = "Sending…";
+    fetch('/api/rsvp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    }).then(function(r){ return r.json().then(function(data){ return {ok:r.ok, data:data}; }); })
+      .then(function(res){
+        btn.disabled = false; btn.textContent = "Send our RSVP";
+        if (!res.ok) {
+          formMsg.textContent = res.data.error || "Something went wrong — please try again.";
+          formMsg.className = 'form-msg error';
+          return;
+        }
+        formMsg.textContent = payload.attending === 'yes'
+          ? "Thank you, " + payload.name + "! We can't wait to celebrate with you."
+          : "Thank you for letting us know, " + payload.name + ". You'll be missed!";
+        formMsg.className = 'form-msg success';
+
+        var qrResult = document.getElementById('qrResult');
+        var declineResult = document.getElementById('declineResult');
+        if (payload.attending === 'yes' && res.data.seatingId) {
+          var qrUrl = '/api/qr/' + res.data.seatingId;
+          var tableUrl = '/table/' + res.data.seatingId;
+          document.getElementById('qrResultImg').src = qrUrl;
+          document.getElementById('qrResultLink').href = tableUrl;
+          qrResult.hidden = false;
+          declineResult.hidden = true;
+        } else if (payload.attending === 'no') {
+          qrResult.hidden = true;
+          declineResult.hidden = false;
+        } else {
+          qrResult.hidden = true;
+          declineResult.hidden = true;
+        }
+
+        form.reset();
+        var nameSuggestBox = document.getElementById('nameSuggestions');
+        if (nameSuggestBox) { nameSuggestBox.hidden = true; nameSuggestBox.innerHTML = ''; }
+        guestCountField.style.display = 'none';
+        partyNamesField.hidden = true;
+        partyNamesList.innerHTML = '';
+        labelYes.classList.remove('active'); labelNo.classList.remove('active');
+        loadGuestWall();
+      }).catch(function(){
+        btn.disabled = false; btn.textContent = "Send our RSVP";
+        formMsg.textContent = "Network hiccup — please try again in a moment.";
+        formMsg.className = 'form-msg error';
+      });
+  });
+
+  // ---------- Guest wall ----------
+  function loadGuestWall(){
+    fetch('/api/rsvps').then(function(r){ return r.json(); }).then(function(data){
+      document.getElementById('statGuests').textContent = data.totalGuests;
+      document.getElementById('statFamilies').textContent = data.totalResponses;
+      var wall = document.getElementById('guestWall');
+      wall.innerHTML = '';
+      if (!data.guests.length) {
+        wall.innerHTML = '<span class="empty">Be the first to RSVP!</span>';
+        return;
+      }
+      data.guests.forEach(function(g){
+        var pill = document.createElement('span');
+        pill.className = 'guest-pill';
+        pill.textContent = g.name + (g.guests > 1 ? ' +' + (g.guests - 1) : '');
+        wall.appendChild(pill);
+      });
+    }).catch(function(){ /* quietly ignore — wall is decorative */ });
+  }
+  loadGuestWall();
+</script>
+</body>
+</html>

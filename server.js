@@ -8,6 +8,7 @@ const PORT = process.env.PORT || 3000;
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, "data");
 const DATA_FILE = path.join(DATA_DIR, "rsvps.json");
 
+// --- tiny JSON-file "database" -------------------------------------------
 function ensureStore() {
   if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
   if (!fs.existsSync(DATA_FILE)) fs.writeFileSync(DATA_FILE, "[]", "utf8");
@@ -34,12 +35,15 @@ function writeAll(entries) {
 
 ensureStore();
 
+// --- middleware ------------------------------------------------------------
 app.use(express.json({ limit: "10kb" }));
 
+// The page lives at the repo root (index.html next to this file).
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "index.html"));
 });
 
+// --- API ---------------------------------------------------------------
 app.post("/api/rsvp", (req, res) => {
   const body = req.body || {};
   const name = String(body.name || "").trim().slice(0, 80);
@@ -86,6 +90,36 @@ app.get("/api/rsvps", (req, res) => {
       .slice()
       .sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt))
       .map((e) => ({ name: e.name, guests: e.guests, submittedAt: e.submittedAt })),
+  });
+});
+
+// Unlisted admin view — not linked from the public page. Shows RSVP data
+// only (name, attending status, guest count, message, timestamp).
+app.get("/admin", (req, res) => {
+  res.sendFile(path.join(__dirname, "admin.html"));
+});
+
+app.get("/api/admin/rsvps", (req, res) => {
+  const entries = readAll();
+  const attending = entries.filter((e) => e.attending === "yes");
+  const declined = entries.filter((e) => e.attending === "no");
+  const totalGuests = attending.reduce((sum, e) => sum + (e.guests || 1), 0);
+
+  res.json({
+    totalResponses: entries.length,
+    attendingCount: attending.length,
+    totalGuests,
+    declinedCount: declined.length,
+    rsvps: entries
+      .slice()
+      .sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt))
+      .map((e) => ({
+        name: e.name,
+        attending: e.attending,
+        guests: e.guests,
+        message: e.message,
+        submittedAt: e.submittedAt,
+      })),
   });
 });
 

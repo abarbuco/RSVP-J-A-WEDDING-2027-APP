@@ -286,6 +286,12 @@
   .radio-row input{ accent-color:var(--rust); }
   .radio-row label.active{ border-color:var(--rust); background:rgba(122,74,46,.08); }
   #guestCountField{ display:none; }
+  #partyNamesField[hidden]{ display:none; }
+  .party-name-input{
+    width:100%; font-family:inherit; font-size:1rem; padding:10px 12px;
+    border:1px solid var(--line); border-radius:6px; background:var(--paper); color:var(--ink);
+    margin-bottom:8px;
+  }
   .rsvp-submit{ width:100%; justify-content:center; padding:12px; font-size:.95rem; }
   .form-msg{ margin-top:14px; padding:12px 14px; border-radius:6px; font-size:.9rem; display:none; }
   .form-msg.error{ display:block; background:rgba(122,74,46,.12); color:var(--rust-deep); }
@@ -511,6 +517,12 @@
         </select>
       </div>
 
+      <div class="field" id="partyNamesField" hidden>
+        <label>Names of your additional guests</label>
+        <div id="partyNamesList"></div>
+        <p class="field-hint">This helps us prepare seating and QR codes for your whole party.</p>
+      </div>
+
       <div class="field">
         <label for="message">Message for Annie &amp; Jay (optional)</label>
         <textarea id="message" name="message" placeholder="A well-wish, a song request, a dietary note…"></textarea>
@@ -627,11 +639,42 @@
   var guestCountField = document.getElementById('guestCountField');
   var labelYes = document.getElementById('labelYes');
   var labelNo = document.getElementById('labelNo');
+  var guestsSelect = document.getElementById('guests');
+  var partyNamesField = document.getElementById('partyNamesField');
+  var partyNamesList = document.getElementById('partyNamesList');
+
+  // Show one name field per additional guest beyond the person filling out
+  // the form (headcount - 1), preserving anything already typed if the
+  // headcount changes.
+  function renderPartyNameFields(){
+    var count = Math.max(0, (parseInt(guestsSelect.value, 10) || 1) - 1);
+    var existing = Array.prototype.slice.call(partyNamesList.querySelectorAll('input')).map(function(inp){ return inp.value; });
+    if (count <= 0){
+      partyNamesField.hidden = true;
+      partyNamesList.innerHTML = '';
+      return;
+    }
+    partyNamesField.hidden = false;
+    var html = '';
+    for (var i = 0; i < count; i++){
+      var val = (existing[i] || '').replace(/"/g, '&quot;');
+      html += '<input type="text" class="party-name-input" placeholder="Guest ' + (i + 2) + '’s name" value="' + val + '" autocomplete="off" />';
+    }
+    partyNamesList.innerHTML = html;
+  }
+  guestsSelect.addEventListener('change', renderPartyNameFields);
+
   document.querySelectorAll('input[name="attending"]').forEach(function(radio){
     radio.addEventListener('change', function(){
       guestCountField.style.display = (this.value === 'yes') ? 'block' : 'none';
       labelYes.classList.toggle('active', this.value === 'yes');
       labelNo.classList.toggle('active', this.value === 'no');
+      if (this.value === 'yes') {
+        renderPartyNameFields();
+      } else {
+        partyNamesField.hidden = true;
+        partyNamesList.innerHTML = '';
+      }
     });
   });
 
@@ -665,10 +708,14 @@
     e.preventDefault();
     formMsg.className = 'form-msg';
     var attendingEl = form.querySelector('input[name="attending"]:checked');
+    var partyNames = Array.prototype.slice.call(partyNamesList.querySelectorAll('input'))
+      .map(function(inp){ return inp.value.trim(); })
+      .filter(function(v){ return v.length > 0; });
     var payload = {
       name: document.getElementById('name').value.trim(),
       attending: attendingEl ? attendingEl.value : null,
       guests: document.getElementById('guests').value,
+      partyNames: partyNames,
       message: document.getElementById('message').value.trim()
     };
     if (!payload.name || !payload.attending) {
@@ -716,6 +763,8 @@
         var nameSuggestBox = document.getElementById('nameSuggestions');
         if (nameSuggestBox) { nameSuggestBox.hidden = true; nameSuggestBox.innerHTML = ''; }
         guestCountField.style.display = 'none';
+        partyNamesField.hidden = true;
+        partyNamesList.innerHTML = '';
         labelYes.classList.remove('active'); labelNo.classList.remove('active');
         loadGuestWall();
       }).catch(function(){

@@ -73,6 +73,17 @@
 
   .backlink{ display:block; text-align:center; margin-top:26px; color:var(--ink-soft); font-size:.95rem; }
   .backlink a{ color:var(--rust); }
+
+  .checkin{ margin-top:20px; padding-top:20px; border-top:1px solid var(--line); }
+  .checkin-btn{
+    display:inline-block; width:100%; padding:14px; border-radius:8px; border:1px solid var(--olive);
+    background:var(--olive); color:#fff8ee; font-family:'Jost', sans-serif; font-size:1.05rem;
+    cursor:pointer;
+  }
+  .checkin-btn:disabled{ opacity:.6; }
+  .checkin-msg{ margin-top:12px; font-size:.95rem; color:var(--ink-soft); line-height:1.5; }
+  .checkin-confirmed{ font-size:1.1rem; font-weight:600; color:var(--olive); margin:0; }
+  .checkin-confirmed-sub{ font-size:.85rem; color:var(--ink-soft); margin:6px 0 0; }
 </style>
 </head>
 <body>
@@ -103,15 +114,55 @@
     return /^\d+$/.test(t) ? ('Table ' + t) : t;
   }
 
-  function showResult(name, table){
+  function checkinBlockHtml(checkedIn){
+    if (checkedIn){
+      return '<div class="checkin">' +
+        '<p class="checkin-confirmed">&#10003; You\'re checked in!</p>' +
+        '<p class="checkin-confirmed-sub">Welcome — enjoy the celebration.</p>' +
+        '</div>';
+    }
+    return '<div class="checkin" id="checkinBlock">' +
+      '<button type="button" class="checkin-btn" id="checkinBtn">Check In</button>' +
+      '<p class="checkin-msg" id="checkinMsg"></p>' +
+      '</div>';
+  }
+
+  function wireCheckinButton(id){
+    var btn = document.getElementById('checkinBtn');
+    if (!btn) return;
+    btn.addEventListener('click', function(){
+      btn.disabled = true; btn.textContent = 'Checking in…';
+      fetch('/api/checkin/' + encodeURIComponent(id), { method: 'POST' })
+        .then(function(r){ return r.json().then(function(data){ return { ok: r.ok, data: data }; }); })
+        .then(function(res){
+          var block = document.getElementById('checkinBlock');
+          if (res.ok && res.data.checkedIn){
+            block.innerHTML =
+              '<p class="checkin-confirmed">&#10003; You\'re checked in!</p>' +
+              '<p class="checkin-confirmed-sub">Welcome — enjoy the celebration.</p>';
+          } else {
+            btn.disabled = false; btn.textContent = 'Check In';
+            document.getElementById('checkinMsg').textContent =
+              res.data.error || 'Something went wrong — please try again.';
+          }
+        }).catch(function(){
+          btn.disabled = false; btn.textContent = 'Check In';
+          document.getElementById('checkinMsg').textContent = 'Network hiccup — please try again in a moment.';
+        });
+    });
+  }
+
+  function showResult(name, table, id, checkedIn){
     var card = document.getElementById('resultCard');
     var big = fmtTable(table);
     card.innerHTML =
       '<p class="greeting">Welcome, ' + name + '!</p>' +
       (big
         ? '<p class="hint" style="margin-top:0;">Please be seated at</p><p class="table-num">' + big + '</p><p class="table-label">Your Table</p>'
-        : '<p class="hint">Your table assignment will be posted here soon — please check back or ask Annie or Jay.</p>');
+        : '<p class="hint">Your table assignment will be posted here soon — please check back or ask Annie or Jay.</p>') +
+      (id ? checkinBlockHtml(checkedIn) : '');
     card.hidden = false;
+    if (id) wireCheckinButton(id);
   }
 
   function showNotFound(msg, candidates){
@@ -148,7 +199,7 @@
       if (data.found){
         document.getElementById('searchCard').hidden = true;
         msgEl.textContent = '';
-        showResult(data.name, data.table);
+        showResult(data.name, data.table, data.id, data.checkedIn);
       } else if (data.multiple && data.multiple.length){
         showNotFound('A few guests match that name — please pick yours:', data.multiple);
       } else {
@@ -176,7 +227,7 @@
   if (personalId){
     fetch('/api/table/' + encodeURIComponent(personalId)).then(function(r){ return r.json(); }).then(function(data){
       if (data.found){
-        showResult(data.name, data.table);
+        showResult(data.name, data.table, data.id, data.checkedIn);
       } else {
         document.getElementById('searchCard').hidden = false;
         showNotFound("We couldn't match this QR code. Please type your name instead:");

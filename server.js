@@ -193,15 +193,30 @@ app.post("/api/rsvp", (req, res) => {
     guests = 0;
   }
 
+  // Optional named additional guests in the party (e.g. "and my husband and
+  // two kids") — capped to the headcount minus the person filling out the
+  // form, and to a sane list size regardless of what the client sends.
+  const rawPartyNames = Array.isArray(body.partyNames) ? body.partyNames : [];
+  const maxParty = attending === "yes" ? Math.max(0, guests - 1) : 0;
+  const partyNames = rawPartyNames
+    .map((n) => String(n || "").trim().slice(0, 80))
+    .filter(Boolean)
+    .slice(0, maxParty);
+
   const entries = readAll();
 
   // A guest who is coming gets a seating record (and so a stable id for
   // their personal QR code) right away — the table number itself may still
   // be blank until Annie assigns it, which the table page handles gracefully.
+  // Named additional guests each get their own seating record too, so they
+  // can be found, seated, and checked in individually.
   let seatingId = null;
   if (attending === "yes") {
     const seatingList = readSeating();
     const seatEntry = ensureSeating(seatingList, name);
+    partyNames.forEach((partyName) => {
+      if (normName(partyName) !== normName(name)) ensureSeating(seatingList, partyName);
+    });
     writeSeating(seatingList);
     seatingId = seatEntry ? seatEntry.id : null;
   }
@@ -211,6 +226,7 @@ app.post("/api/rsvp", (req, res) => {
     name,
     attending,
     guests,
+    partyNames,
     message,
     seatingId,
     submittedAt: new Date().toISOString(),
@@ -408,6 +424,7 @@ app.get("/api/admin/rsvps", (req, res) => {
           name: e.name,
           attending: e.attending,
           guests: e.guests,
+          partyNames: Array.isArray(e.partyNames) ? e.partyNames : [],
           message: e.message,
           seatingId: seat ? seat.id : null,
           table: seat ? seat.table || null : null,

@@ -113,6 +113,7 @@
         name: r.name,
         attending: r.attending,
         guests: r.guests,
+        partyNames: r.partyNames || [],
         message: r.message,
         table: r.table || null,
         checkedIn: !!r.checkedIn,
@@ -177,8 +178,11 @@
       var actionHtml = (!g.checkedIn && g.id)
         ? '<div class="checkin-action"><button type="button" class="checkin-btn-sm" data-id="' + g.id + '">Check In</button><span class="checkin-note" data-note-for="' + g.id + '"></span></div>'
         : '';
+      var partyHtml = (g.partyNames && g.partyNames.length)
+        ? '<p class="msg-note" style="font-style:normal;">With: ' + g.partyNames.map(esc).join(', ') + '</p>'
+        : '';
       var msgHtml = g.message ? '<p class="msg-note">"' + esc(g.message) + '"</p>' : '';
-      return '<div class="card"><p class="name">' + esc(g.name) + '</p>' + pill + arrivedHtml + tableHtml + actionHtml + msgHtml + '</div>';
+      return '<div class="card"><p class="name">' + esc(g.name) + '</p>' + pill + arrivedHtml + tableHtml + actionHtml + partyHtml + msgHtml + '</div>';
     }).join('');
   }
 

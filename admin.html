@@ -193,6 +193,9 @@
         ? '<span class="pill yes">Joyfully accepts · ' + r.guests + (r.guests === 1 ? ' guest' : ' guests') + '</span>'
         : '<span class="pill no">Regretfully declines</span>';
       var msg = r.message ? '<div class="msg">“' + esc(r.message) + '”</div>' : '';
+      var party = (r.partyNames && r.partyNames.length)
+        ? '<div class="msg" style="font-style:normal;">With: ' + r.partyNames.map(esc).join(', ') + '</div>'
+        : '';
       var table = '<span class="table-badge">' + (r.table ? 'Table ' + esc(r.table) : 'No table yet') + '</span>';
       var arrived = r.checkedIn ? '<span class="pill arrived">&#10003; Arrived</span>' : '';
       var checkinBtn = (!r.checkedIn && r.seatingId)
@@ -201,7 +204,7 @@
       var checkinNote = checkinBtn ? '<span class="checkin-note" data-note-for="' + r.seatingId + '"></span>' : '';
       var qr = r.seatingId ? '<a class="qr-link" href="/api/qr/' + r.seatingId + '" target="_blank" rel="noopener">View QR</a>' : '';
       return '<div class="row"><span class="name">' + esc(r.name) + '</span>' + pill + table + arrived + checkinBtn + qr +
-        '<span class="when">' + fmtDate(r.submittedAt) + '</span>' + msg + checkinNote + '</div>';
+        '<span class="when">' + fmtDate(r.submittedAt) + '</span>' + party + msg + checkinNote + '</div>';
     }).join('');
   }
 

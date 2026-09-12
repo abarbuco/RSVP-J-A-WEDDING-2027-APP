@@ -216,6 +216,7 @@
   .hub-h3{ font-size:1.2rem; margin:0 0 8px; color:var(--rust); }
   .hub-sub{ color:var(--ink-soft); font-size:.92rem; margin:0 0 16px; line-height:1.5; }
   .hub-note{ color:var(--ink-soft); font-size:.8rem; font-style:italic; margin:-10px 0 16px; line-height:1.4; }
+  .hub-note a{ color:var(--rust); }
   .updates-list{ display:flex; flex-direction:column; gap:14px; }
   .update-item{
     border:1px solid var(--line); border-radius:6px; padding:16px 18px; background:var(--ivory);
@@ -415,7 +416,7 @@
       <div class="tile"><span class="num" id="cd-secs">00</span><span class="unit">Secs</span></div>
     </div>
     <p class="thank-you-msg" id="thankYouMsg" hidden>Thank you for celebrating with us! &#10084;<br />&mdash; Annie &amp; Jay
-      <span class="thank-you-sub">Keep this site as a memory of our wedding — access to download the photos will be here forever.</span>
+      <span class="thank-you-sub">This site stays up as our wedding memory — the photos are always here to download.</span>
     </p>
   </section>
 
@@ -432,15 +433,15 @@
       <div>
         <h3 class="hub-h3">Find Your Table &amp; Program</h3>
         <p class="hub-sub">Already RSVP'd? Look yourself up by name — or upload a photo of your QR code — to see your table number, check in, and the wedding program.</p>
-        <p class="closed-note" id="findTableClosedNote" hidden>This wedding has concluded — thank you for celebrating with us! You can still browse and download photos in the gallery.</p>
+        <p class="closed-note" id="findTableClosedNote" hidden>Thank you for celebrating with us! Table lookups are closed now, but photos are still here to browse and download.</p>
         <a class="btn-lg hub-action-btn" href="/table" id="findTableBtn">Find My Table</a>
       </div>
 
       <div>
         <h3 class="hub-h3">Share Your Photos</h3>
         <p class="hub-sub">Snapped something special? Add it here so everyone can see it right away.</p>
-        <p class="hub-note">Photos added here will also be saved to our Google Drive album the day after the wedding.</p>
-        <p class="closed-note" id="addPhotoClosedNote" hidden>Photo uploads have closed — thank you so much for sharing your memories! You can still view and download every photo below.</p>
+        <p class="hub-note">Photos are also saved to our <a href="https://drive.google.com/drive/folders/1bW2v_oK0EhicjtXpN5mHZeFi5qUTXRqa?usp=drive_link" target="_blank" rel="noopener">Google Drive album</a> the next day.</p>
+        <p class="closed-note" id="addPhotoClosedNote" hidden>Thank you for sharing your memories! Uploads are closed now, but every photo is still here to view and download.</p>
         <div class="photo-gallery" id="photoGallery"><p class="photo-gallery-empty">Loading…</p></div>
         <div class="photo-gallery-nav" id="photoGalleryNav" hidden>
           <button type="button" id="photoPrevBtn" aria-label="Previous photos">&larr;</button>
@@ -532,7 +533,7 @@
     <p class="sub">Kindly respond at your earliest so we can plan the celebration. <em id="rsvpDeadlineNote">(RSVP deadline to be announced.)</em></p>
     <a class="btn-lg" href="/rsvp" id="rsvpBtn">RSVP Now</a>
     <p class="rsvp-cta-hint" id="rsvpCtaHint">Takes about a minute. You can add your whole party in one go.</p>
-    <p class="closed-note" id="rsvpClosedNote" hidden>RSVP has closed. Thank you to everyone who responded — please reach out to Annie &amp; Jay directly if anything's changed.</p>
+    <p class="closed-note" id="rsvpClosedNote" hidden>Thank you to everyone who responded! RSVP is closed now — please message us directly if anything's changed.</p>
   </section>
 
   <div class="trim footer-trim" aria-hidden="true"></div>

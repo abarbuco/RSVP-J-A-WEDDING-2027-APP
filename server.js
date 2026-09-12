@@ -254,7 +254,7 @@ app.get("/jsQR.js", (req, res) => {
 // --- API ---------------------------------------------------------------
 app.post("/api/rsvp", (req, res) => {
   if (isRsvpClosed(readSettingsObj())) {
-    return res.status(403).json({ error: "RSVP has closed. Thank you to everyone who responded — please reach out to Annie & Jay directly if anything's changed." });
+    return res.status(403).json({ error: "Thank you to everyone who responded! RSVP is closed now — please message us directly if anything's changed." });
   }
 
   const body = req.body || {};
@@ -768,7 +768,7 @@ ensureFile(GUEST_PHOTOS_FILE, "[]");
 
 app.post("/api/guest-photos", (req, res) => {
   if (isPhotoUploadClosed()) {
-    return res.status(403).json({ error: "Photo uploads have closed. Thank you so much for sharing your memories with us!" });
+    return res.status(403).json({ error: "Thank you for sharing your memories! Uploads are closed now." });
   }
 
   const body = req.body || {};

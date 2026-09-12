@@ -67,6 +67,17 @@
     border:1px solid var(--line); background:var(--ivory); color:var(--ink); font-size:1rem; cursor:pointer;
   }
 
+  .qr-upload-divider{
+    display:flex; align-items:center; gap:10px; margin:18px 0 14px;
+    color:var(--ink-soft); font-size:.85rem; text-transform:uppercase; letter-spacing:.08em;
+  }
+  .qr-upload-divider::before, .qr-upload-divider::after{ content:''; flex:1; height:1px; background:var(--line); }
+  .qr-upload-label{
+    display:block; width:100%; text-align:center; padding:14px; border-radius:8px;
+    border:1px dashed var(--olive); color:var(--olive); font-size:1rem; cursor:pointer;
+  }
+  .qr-upload-input{ display:none; }
+
   .program h2{ font-family:'Cormorant Garamond', Georgia, serif; font-size:1.5rem; margin:0 0 14px; text-align:center; }
   .program-list{ display:flex; flex-direction:column; gap:12px; }
   .program-item{
@@ -88,6 +99,7 @@
   .checkin-btn:disabled{ opacity:.6; }
   .checkin-msg{ margin-top:10px; font-size:.9rem; color:var(--ink-soft); line-height:1.5; }
 </style>
+<script src="/jsQR.js"></script>
 </head>
 <body>
 <div class="wrap">
@@ -101,6 +113,11 @@
     <input type="text" id="nameInput" placeholder="e.g. Maria Santos" autocomplete="name" />
     <button class="btn" id="searchBtn">Find My Table</button>
     <div class="msg" id="searchMsg"></div>
+
+    <div class="qr-upload-divider"><span>or</span></div>
+    <label class="qr-upload-label" for="qrUploadInput">Upload your QR code image</label>
+    <input type="file" id="qrUploadInput" accept="image/*" class="qr-upload-input" />
+    <div class="msg" id="qrUploadMsg"></div>
   </div>
 
   <div class="card program">
@@ -236,6 +253,68 @@
   });
   document.getElementById('nameInput').addEventListener('keydown', function(e){
     if (e.key === 'Enter') document.getElementById('searchBtn').click();
+  });
+
+  // ---------- Upload a saved QR code image (instead of scanning it) ----------
+  // Decodes entirely in the guest's own browser — the image is never sent
+  // anywhere — then jumps to the same /table/<id> link a live scan would.
+  function decodeQrFile(file){
+    var msgEl = document.getElementById('qrUploadMsg');
+    msgEl.className = 'msg';
+    msgEl.textContent = 'Reading your QR code…';
+    var reader = new FileReader();
+    reader.onload = function(){
+      var img = new Image();
+      img.onload = function(){
+        var canvas = document.createElement('canvas');
+        canvas.width = img.naturalWidth;
+        canvas.height = img.naturalHeight;
+        var ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+        var imageData;
+        try {
+          imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        } catch (e) {
+          msgEl.className = 'msg error';
+          msgEl.textContent = "Couldn't read that image. Please try again, or type your name instead.";
+          return;
+        }
+        var code = (typeof jsQR === 'function') ? jsQR(imageData.data, imageData.width, imageData.height) : null;
+        if (!code || !code.data){
+          msgEl.className = 'msg error';
+          msgEl.textContent = "We couldn't find a QR code in that photo. Please try a clearer image, or type your name instead.";
+          return;
+        }
+        var dest;
+        try {
+          var parsed = new URL(code.data, location.href);
+          dest = (parsed.origin === location.origin) ? (parsed.pathname + parsed.search) : null;
+        } catch (e) {
+          dest = null;
+        }
+        if (!dest || !/^\/table\//.test(dest)){
+          msgEl.className = 'msg error';
+          msgEl.textContent = "That doesn't look like one of our QR codes. Please try again, or type your name instead.";
+          return;
+        }
+        msgEl.textContent = 'Found it!';
+        location.href = dest;
+      };
+      img.onerror = function(){
+        msgEl.className = 'msg error';
+        msgEl.textContent = "That doesn't look like an image file. Please try again.";
+      };
+      img.src = reader.result;
+    };
+    reader.onerror = function(){
+      msgEl.className = 'msg error';
+      msgEl.textContent = 'Could not open that file — please try again.';
+    };
+    reader.readAsDataURL(file);
+  }
+  document.getElementById('qrUploadInput').addEventListener('change', function(){
+    var file = this.files && this.files[0];
+    if (file) decodeQrFile(file);
   });
 
   // ---------- Personal link: /table/<id> ----------

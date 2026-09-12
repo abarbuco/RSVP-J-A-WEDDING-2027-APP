@@ -558,13 +558,19 @@
     <div class="guest-wall" id="guestWall"><span class="empty">Be the first to RSVP!</span></div>
   </section>
 
+  <section class="card section reveal" id="photos" hidden>
+    <h2>Share Your Photos</h2>
+    <p class="sub">Snapped something special? Upload all your memories here so everyone can see and relive the day together.</p>
+    <a class="btn solid" id="photoAlbumBtn" href="#" target="_blank" rel="noopener">Upload All Your Memories Here</a>
+  </section>
+
   <div class="trim footer-trim" aria-hidden="true"></div>
 
   <footer>
     <p class="sign">Annie &amp; Jay</p>
     <p class="tag">#AJCloseTheGap</p>
     <p class="fine">We can't wait to celebrate with you.<br/>For questions, please reach out to Katrina Simbulas, our wedding coordinator, via WhatsApp at <a href="https://wa.me/639175142402">+63 917 514 2402</a>.</p>
-    <p class="fine" style="margin-top:10px;">Look for the QR code on your invitation to find your table and the day's program.</p>
+    <p class="fine" style="margin-top:10px;">Look for the QR code on your invitation to find your table and the day's program — or <a href="/table">find it here</a> anytime, by name or by uploading a saved photo of your QR code.</p>
     <a href="/admin" class="admin-dot">&#128274; Admin</a>
   </footer>
 
@@ -908,6 +914,16 @@
     }).catch(function(){ /* keep the friendly empty state on failure */ });
   }
   loadUpdates();
+
+  // ---------- Shared Photo Album ----------
+  // Only shown once Annie has set a link from /admin — no broken/empty
+  // button before then.
+  fetch('/api/settings').then(function(r){ return r.json(); }).then(function(data){
+    if (data.photoAlbumUrl){
+      document.getElementById('photoAlbumBtn').href = data.photoAlbumUrl;
+      document.getElementById('photos').hidden = false;
+    }
+  }).catch(function(){ /* keep it hidden on failure */ });
 </script>
 </body>
 </html>

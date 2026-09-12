@@ -179,6 +179,18 @@
     <div id="progMsg"></div>
     <div class="list" id="progList"></div>
   </div>
+
+  <!-- ---------------- Shared Photo Album ---------------- -->
+  <div class="panel">
+    <h2>Shared Photo Album</h2>
+    <p class="desc">Paste the link to a shared Google Drive (or any) folder where guests can upload and browse everyone's wedding photos. A button linking to it appears on the invitation page — leave this blank to hide that button.</p>
+    <div class="field">
+      <label for="photoAlbumUrl">Album link</label>
+      <input type="text" id="photoAlbumUrl" placeholder="https://drive.google.com/drive/folders/…" />
+    </div>
+    <button id="photoAlbumSaveBtn">Save Link</button>
+    <div id="photoAlbumMsg"></div>
+  </div>
 </div>
 
 <script>
@@ -505,6 +517,30 @@
     var row = e.target.closest('.row');
     var id = row.getAttribute('data-id');
     fetch('/api/admin/program/' + id, { method: 'DELETE' }).then(function(){ loadProgram(); });
+  });
+
+  // ================= Shared Photo Album =================
+  var photoAlbumInput = document.getElementById('photoAlbumUrl');
+  fetch('/api/settings').then(function(r){ return r.json(); }).then(function(data){
+    photoAlbumInput.value = data.photoAlbumUrl || '';
+  }).catch(function(){ /* leave blank on failure */ });
+
+  document.getElementById('photoAlbumSaveBtn').addEventListener('click', function(){
+    var msgEl = document.getElementById('photoAlbumMsg');
+    var btn = document.getElementById('photoAlbumSaveBtn');
+    var url = photoAlbumInput.value.trim();
+    btn.disabled = true; btn.textContent = 'Saving…';
+    fetch('/api/admin/settings', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ photoAlbumUrl: url })
+    }).then(function(r){ return r.json(); }).then(function(data){
+      btn.disabled = false; btn.textContent = 'Save Link';
+      if (!data.ok){ msgEl.innerHTML = '<p class="err">' + esc(data.error || 'Something went wrong.') + '</p>'; return; }
+      msgEl.innerHTML = '<p class="ok">' + (data.photoAlbumUrl ? 'Saved — the button is now live on the invitation page.' : 'Saved — the button is now hidden.') + '</p>';
+    }).catch(function(){
+      btn.disabled = false; btn.textContent = 'Save Link';
+      msgEl.innerHTML = '<p class="err">Network hiccup — please try again.</p>';
+    });
   });
 
   // ================= Logout =================

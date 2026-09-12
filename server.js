@@ -15,16 +15,17 @@ const DATA_FILE = path.join(DATA_DIR, "rsvps.json");
 const UPDATES_FILE = path.join(DATA_DIR, "updates.json");
 const PROGRAM_FILE = path.join(DATA_DIR, "program.json");
 const SEATING_FILE = path.join(DATA_DIR, "seating.json");
+const SETTINGS_FILE = path.join(DATA_DIR, "settings.json");
 const UPLOADS_DIR = path.join(DATA_DIR, "uploads");
 
 // --- tiny JSON-file "database" -------------------------------------------
-function ensureFile(file) {
+function ensureFile(file, defaultContent) {
   if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
-  if (!fs.existsSync(file)) fs.writeFileSync(file, "[]", "utf8");
+  if (!fs.existsSync(file)) fs.writeFileSync(file, defaultContent, "utf8");
 }
 
 function readJson(file) {
-  ensureFile(file);
+  ensureFile(file, "[]");
   try {
     const raw = fs.readFileSync(file, "utf8");
     const parsed = JSON.parse(raw);
@@ -36,10 +37,32 @@ function readJson(file) {
 }
 
 function writeJson(file, entries) {
-  ensureFile(file);
+  ensureFile(file, "[]");
   const tmp = file + ".tmp";
   fs.writeFileSync(tmp, JSON.stringify(entries, null, 2), "utf8");
   fs.renameSync(tmp, file);
+}
+
+// Same idea as readJson/writeJson, but for a single settings object rather
+// than a list — used for small site-wide config like the shared photo
+// album link, which Annie edits from /admin without needing a redeploy.
+function readSettingsObj() {
+  ensureFile(SETTINGS_FILE, "{}");
+  try {
+    const raw = fs.readFileSync(SETTINGS_FILE, "utf8");
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+  } catch (err) {
+    console.error(`Failed to read ${SETTINGS_FILE}, starting fresh:`, err);
+    return {};
+  }
+}
+
+function writeSettingsObj(obj) {
+  ensureFile(SETTINGS_FILE, "{}");
+  const tmp = SETTINGS_FILE + ".tmp";
+  fs.writeFileSync(tmp, JSON.stringify(obj, null, 2), "utf8");
+  fs.renameSync(tmp, SETTINGS_FILE);
 }
 
 function readAll() { return readJson(DATA_FILE); }
@@ -51,10 +74,11 @@ function writeProgram(entries) { writeJson(PROGRAM_FILE, entries); }
 function readSeating() { return readJson(SEATING_FILE); }
 function writeSeating(entries) { writeJson(SEATING_FILE, entries); }
 
-ensureFile(DATA_FILE);
-ensureFile(UPDATES_FILE);
-ensureFile(PROGRAM_FILE);
-ensureFile(SEATING_FILE);
+ensureFile(DATA_FILE, "[]");
+ensureFile(UPDATES_FILE, "[]");
+ensureFile(PROGRAM_FILE, "[]");
+ensureFile(SEATING_FILE, "[]");
+ensureFile(SETTINGS_FILE, "{}");
 
 function normName(n) {
   return String(n || "").trim().toLowerCase().replace(/\s+/g, " ");
@@ -111,7 +135,11 @@ function upsertSeating(list, rawName, rawTable, rawMaxGuests) {
 async function generateQrSvg(url) {
   return QRCode.toString(url, {
     type: "svg",
-    margin: 1,
+    // A wider quiet zone (the QR spec recommends 4 modules) makes the code
+    // decode reliably from a photo or screenshot upload, not just a live
+    // camera scan — jsQR (used by the "upload your QR code" feature) is
+    // fussier about this than most phone camera scanners.
+    margin: 4,
     color: { dark: "#2b211a", light: "#fffcf6" },
   });
 }
@@ -182,6 +210,13 @@ app.post("/api/admin-logout", (req, res) => {
 // The page lives at the repo root (index.html next to this file).
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "index.html"));
+});
+
+// Vendored locally (not loaded from a CDN) so the "upload your QR code
+// image" feature on /table keeps working even on a venue's flaky WiFi or a
+// guest's phone that blocks third-party scripts.
+app.get("/jsQR.js", (req, res) => {
+  res.sendFile(path.join(__dirname, "jsQR.js"));
 });
 
 // --- API ---------------------------------------------------------------
@@ -702,6 +737,26 @@ app.delete("/api/admin/program/:id", (req, res) => {
   if (next.length === program.length) return res.status(404).json({ error: "Program item not found." });
   writeProgram(next);
   res.json({ ok: true });
+});
+
+// --- Site settings (shared photo album link, etc.) --------------------------
+// A small key/value config Annie can edit from /admin without a code change
+// or redeploy. Public so the invitation page can show the album button.
+app.get("/api/settings", (req, res) => {
+  const settings = readSettingsObj();
+  res.json({ photoAlbumUrl: settings.photoAlbumUrl || null });
+});
+
+app.post("/api/admin/settings", (req, res) => {
+  const body = req.body || {};
+  const raw = String(body.photoAlbumUrl || "").trim().slice(0, 500);
+  if (raw && !/^https?:\/\//i.test(raw)) {
+    return res.status(400).json({ error: "Please enter a full link starting with https://" });
+  }
+  const settings = readSettingsObj();
+  settings.photoAlbumUrl = raw || null;
+  writeSettingsObj(settings);
+  res.json({ ok: true, photoAlbumUrl: settings.photoAlbumUrl });
 });
 
 // Admin alias of /api/qr/:id (same QR, same no-auth model) — kept so

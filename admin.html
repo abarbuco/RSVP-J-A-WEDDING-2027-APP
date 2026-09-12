@@ -68,6 +68,9 @@
   .pill{ font-size:.72rem; letter-spacing:.04em; padding:3px 10px; border-radius:999px; white-space:nowrap; }
   .pill.yes{ background:rgba(77,106,58,.14); color:var(--good); }
   .pill.no{ background:rgba(154,80,48,.14); color:var(--bad); }
+  .pill.arrived{ background:rgba(201,154,74,.18); color:var(--gold-soft); font-weight:600; }
+  .checkin-btn-sm{ font-size:.72rem; padding:5px 14px; }
+  .checkin-note{ flex-basis:100%; font-size:.78rem; color:var(--bad); }
   .row .guests{ font-size:.85rem; color:var(--ink-soft); white-space:nowrap; }
   .row .msg{ flex-basis:100%; font-size:.85rem; color:var(--ink-soft); font-style:italic; }
   .row .when{ font-size:.72rem; color:var(--ink-soft); white-space:nowrap; }
@@ -191,9 +194,14 @@
         : '<span class="pill no">Regretfully declines</span>';
       var msg = r.message ? '<div class="msg">“' + esc(r.message) + '”</div>' : '';
       var table = '<span class="table-badge">' + (r.table ? 'Table ' + esc(r.table) : 'No table yet') + '</span>';
+      var arrived = r.checkedIn ? '<span class="pill arrived">&#10003; Arrived</span>' : '';
+      var checkinBtn = (!r.checkedIn && r.seatingId)
+        ? '<button type="button" class="ghost checkin-btn-sm" data-id="' + r.seatingId + '">Check In</button>'
+        : '';
+      var checkinNote = checkinBtn ? '<span class="checkin-note" data-note-for="' + r.seatingId + '"></span>' : '';
       var qr = r.seatingId ? '<a class="qr-link" href="/api/qr/' + r.seatingId + '" target="_blank" rel="noopener">View QR</a>' : '';
-      return '<div class="row"><span class="name">' + esc(r.name) + '</span>' + pill + table + qr +
-        '<span class="when">' + fmtDate(r.submittedAt) + '</span>' + msg + '</div>';
+      return '<div class="row"><span class="name">' + esc(r.name) + '</span>' + pill + table + arrived + checkinBtn + qr +
+        '<span class="when">' + fmtDate(r.submittedAt) + '</span>' + msg + checkinNote + '</div>';
     }).join('');
   }
 
@@ -212,6 +220,28 @@
   }
   searchEl.addEventListener('input', renderRsvps);
   loadRsvps();
+
+  listEl.addEventListener('click', function(e){
+    var btn = e.target.closest('.checkin-btn-sm');
+    if (!btn) return;
+    var id = btn.getAttribute('data-id');
+    var row = btn.closest('.row');
+    var note = row ? row.querySelector('.checkin-note') : null;
+    btn.disabled = true; btn.textContent = 'Checking in…';
+    fetch('/api/checkin/' + encodeURIComponent(id), { method: 'POST' })
+      .then(function(r){ return r.json().then(function(data){ return { ok: r.ok, data: data }; }); })
+      .then(function(res){
+        if (res.ok && res.data.checkedIn){
+          loadRsvps();
+        } else {
+          btn.disabled = false; btn.textContent = 'Check In';
+          if (note) note.textContent = (res.data && res.data.error) || 'Something went wrong.';
+        }
+      }).catch(function(){
+        btn.disabled = false; btn.textContent = 'Check In';
+        if (note) note.textContent = 'Network hiccup — please try again.';
+      });
+  });
 
   // ================= Seating List & QR =================
   var allSeating = [];

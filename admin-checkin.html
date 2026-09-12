@@ -60,9 +60,18 @@
   .pill.yes{ background:var(--good-bg); color:var(--good); }
   .pill.no{ background:var(--bad-bg); color:var(--bad); }
   .pill.unknown{ background:var(--neutral-bg); color:var(--neutral); }
+  .pill.arrived{ background:rgba(201,154,74,.22); color:#96731f; }
+  @media (prefers-color-scheme: dark){ .pill.arrived{ color:#e6c467; } }
   .table-line{ font-size:1.3rem; font-weight:600; color:var(--rust); }
   .table-line .label{ font-size:.72rem; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-soft); font-weight:400; display:block; margin-bottom:2px; }
   .msg-note{ margin-top:10px; font-size:.9rem; color:var(--ink-soft); font-style:italic; }
+  .checkin-action{ margin-top:12px; display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .checkin-btn-sm{
+    font-family:'Jost', sans-serif; font-size:.85rem; padding:8px 18px; border-radius:999px;
+    border:1px solid var(--rust); background:var(--rust); color:#fff8ee; cursor:pointer;
+  }
+  .checkin-btn-sm:disabled{ opacity:.6; cursor:default; }
+  .checkin-note{ font-size:.8rem; color:var(--bad); }
 
   .empty{ text-align:center; color:var(--ink-soft); padding:40px 0; font-size:1.05rem; }
   .hint{ text-align:center; color:var(--ink-soft); padding:30px 0; font-size:1.05rem; }
@@ -105,7 +114,9 @@
         attending: r.attending,
         guests: r.guests,
         message: r.message,
-        table: r.table || null
+        table: r.table || null,
+        checkedIn: !!r.checkedIn,
+        id: r.seatingId || null
       };
       merged.push(entry);
       byName[normName(r.name)] = true;
@@ -119,7 +130,9 @@
         attending: null,
         guests: null,
         message: null,
-        table: s.table || null
+        table: s.table || null,
+        checkedIn: !!s.checkedIn,
+        id: s.id
       });
       byName[key] = true;
     });
@@ -160,12 +173,42 @@
       } else {
         tableHtml = '<div class="table-line" style="color:var(--ink-soft); font-size:1rem; font-weight:400;">No table assigned yet</div>';
       }
+      var arrivedHtml = g.checkedIn ? '<span class="pill arrived">&#10003; Arrived</span>' : '';
+      var actionHtml = (!g.checkedIn && g.id)
+        ? '<div class="checkin-action"><button type="button" class="checkin-btn-sm" data-id="' + g.id + '">Check In</button><span class="checkin-note" data-note-for="' + g.id + '"></span></div>'
+        : '';
       var msgHtml = g.message ? '<p class="msg-note">"' + esc(g.message) + '"</p>' : '';
-      return '<div class="card"><p class="name">' + esc(g.name) + '</p>' + pill + tableHtml + msgHtml + '</div>';
+      return '<div class="card"><p class="name">' + esc(g.name) + '</p>' + pill + arrivedHtml + tableHtml + actionHtml + msgHtml + '</div>';
     }).join('');
   }
 
   searchEl.addEventListener('input', renderResults);
+
+  resultsEl.addEventListener('click', function(e){
+    var btn = e.target.closest('.checkin-btn-sm');
+    if (!btn) return;
+    var id = btn.getAttribute('data-id');
+    btn.disabled = true;
+    btn.textContent = 'Checking in…';
+    var note = resultsEl.querySelector('.checkin-note[data-note-for="' + id + '"]');
+    fetch('/api/checkin/' + encodeURIComponent(id), { method: 'POST' })
+      .then(function(r){ return r.json().then(function(data){ return { ok: r.ok, data: data }; }); })
+      .then(function(res){
+        if (res.ok && res.data.checkedIn){
+          var g = allGuests.find(function(x){ return x.id === id; });
+          if (g) g.checkedIn = true;
+          renderResults();
+        } else {
+          btn.disabled = false;
+          btn.textContent = 'Check In';
+          if (note) note.textContent = (res.data && res.data.error) || 'Something went wrong — please try again.';
+        }
+      }).catch(function(){
+        btn.disabled = false;
+        btn.textContent = 'Check In';
+        if (note) note.textContent = 'Network hiccup — please try again.';
+      });
+  });
 
   function loadAll(){
     Promise.all([

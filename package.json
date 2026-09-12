@@ -1,7 +1,7 @@
 {
   "name": "ajclosethegap",
   "version": "1.0.0",
-  "description": "Anne & Jay's wedding invitation and RSVP site — #AJCloseTheGap",
+  "description": "Annie & Jay's wedding invitation and RSVP site — #AJCloseTheGap",
   "private": true,
   "main": "server.js",
   "scripts": {
@@ -11,6 +11,8 @@
     "node": ">=18"
   },
   "dependencies": {
-    "express": "^4.19.2"
+    "express": "^4.19.2",
+    "qrcode": "^1.5.4",
+    "xlsx": "^0.18.5"
   }
 }

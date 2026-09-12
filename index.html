@@ -181,6 +181,15 @@
   .section h2{ font-size:1.6rem; margin-bottom:4px; }
   .section .sub{ color:var(--ink-soft); font-size:.92rem; margin-bottom:22px; }
 
+  /* ---------- Wedding Updates ---------- */
+  .updates-list{ display:flex; flex-direction:column; gap:14px; }
+  .update-item{
+    border:1px solid var(--line); border-radius:6px; padding:16px 18px; background:var(--ivory);
+  }
+  .update-item .update-date{ font-size:.78rem; letter-spacing:.08em; text-transform:uppercase; color:var(--gold); margin-bottom:6px; }
+  .update-item .update-text{ font-size:1.1rem; line-height:1.55; margin:0; }
+  .updates-empty{ color:var(--ink-soft); font-style:italic; text-align:center; padding:8px 0; }
+
   /* ---------- Details grid ---------- */
   .details-grid{
     display:grid;
@@ -343,6 +352,12 @@
     </div>
   </section>
 
+  <section class="card section reveal" id="updates">
+    <h2>Wedding Updates</h2>
+    <p class="sub">Any news about the big day will be posted here first.</p>
+    <div class="updates-list" id="updatesList"><p class="updates-empty">No updates yet — check back closer to the date.</p></div>
+  </section>
+
   <section class="card section reveal" id="details">
     <h2>Ceremony &amp; Reception</h2>
     <p class="sub">One venue, one afternoon — please plan to stay for both.</p>
@@ -457,19 +472,13 @@
     <div class="guest-wall" id="guestWall"><span class="empty">Be the first to RSVP!</span></div>
   </section>
 
-  <section class="card section reveal" style="text-align:center;">
-    <h2>Share This Page</h2>
-    <p class="sub">Scan to open the invitation, or pass along the link.</p>
-    <svg class="qr-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 35 35" shape-rendering="crispEdges" width="150" height="150" style="color:var(--ink)"><path stroke="currentColor" d="M1 1.5h7m1 0h1m1 0h1m2 0h2m2 0h2m1 0h2m4 0h7M1 2.5h1m5 0h1m1 0h1m2 0h4m1 0h1m1 0h5m3 0h1m5 0h1M1 3.5h1m1 0h3m1 0h1m1 0h1m1 0h1m2 0h2m4 0h1m1 0h1m1 0h1m2 0h1m1 0h3m1 0h1M1 4.5h1m1 0h3m1 0h1m2 0h1m2 0h1m1 0h3m1 0h1m1 0h2m1 0h1m2 0h1m1 0h3m1 0h1M1 5.5h1m1 0h3m1 0h1m1 0h2m1 0h1m3 0h2m4 0h1m4 0h1m1 0h3m1 0h1M1 6.5h1m5 0h1m3 0h2m2 0h4m1 0h1m1 0h4m1 0h1m5 0h1M1 7.5h7m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h7M10 8.5h3m1 0h4m5 0h1M1 9.5h1m2 0h6m3 0h1m1 0h1m1 0h2m2 0h1m2 0h3m2 0h1m1 0h3M2 10.5h1m2 0h1m3 0h3m2 0h1m1 0h1m1 0h1m1 0h1m2 0h2m4 0h3M1 11.5h1m1 0h5m1 0h6m1 0h1m5 0h1m1 0h2m1 0h1m1 0h5M1 12.5h2m2 0h2m2 0h1m1 0h1m2 0h1m1 0h2m1 0h1m4 0h1m3 0h1m2 0h1M2 13.5h1m1 0h1m2 0h3m1 0h2m1 0h1m1 0h1m1 0h1m1 0h2m3 0h3m5 0h1M1 14.5h4m3 0h1m1 0h1m1 0h1m1 0h2m3 0h3m1 0h2m1 0h1m1 0h1M1 15.5h1m2 0h5m1 0h3m3 0h1m1 0h1m1 0h1m1 0h1m4 0h1m1 0h3M3 16.5h1m1 0h2m2 0h1m2 0h1m2 0h1m1 0h1m3 0h1m3 0h2m1 0h4m1 0h1M4 17.5h1m1 0h2m1 0h1m2 0h6m3 0h1m1 0h1m1 0h6M4 18.5h2m2 0h1m5 0h3m1 0h5m4 0h1m1 0h1m1 0h3M2 19.5h2m2 0h15m1 0h3m3 0h1m1 0h2m1 0h1M2 20.5h1m2 0h1m2 0h4m1 0h2m8 0h4m2 0h3M5 21.5h4m2 0h1m2 0h4m1 0h3m1 0h1m1 0h1m4 0h1m1 0h1M1 22.5h2m1 0h2m7 0h2m5 0h1m2 0h2m1 0h1m1 0h3M1 23.5h1m5 0h2m2 0h2m5 0h1m2 0h4m2 0h3m2 0h2M1 24.5h1m2 0h3m2 0h1m2 0h5m1 0h1m4 0h4m1 0h1m2 0h3M1 25.5h3m1 0h3m1 0h1m1 0h1m1 0h2m5 0h2m2 0h7m1 0h2M9 26.5h2m5 0h4m2 0h1m2 0h1m3 0h1m1 0h2M1 27.5h7m1 0h1m2 0h1m1 0h1m1 0h1m1 0h1m1 0h2m2 0h2m1 0h1m1 0h1m1 0h1M1 28.5h1m5 0h1m1 0h4m1 0h1m3 0h2m3 0h3m3 0h5M1 29.5h1m1 0h3m1 0h1m1 0h3m1 0h2m2 0h2m4 0h7m2 0h2M1 30.5h1m1 0h3m1 0h1m1 0h3m1 0h1m1 0h1m1 0h8m1 0h1m1 0h1m3 0h2M1 31.5h1m1 0h3m1 0h1m2 0h1m5 0h1m2 0h2m1 0h3m1 0h1m1 0h3m1 0h2M1 32.5h1m5 0h1m2 0h1m2 0h3m3 0h3m4 0h4m1 0h3M1 33.5h7m1 0h1m1 0h2m1 0h7m3 0h6"/></svg>
-    <p style="margin-top:10px;"><a class="btn" href="https://ajclosethegap-web-production.up.railway.app" style="word-break:break-all;">ajclosethegap-web-production.up.railway.app</a></p>
-  </section>
-
   <div class="trim footer-trim" aria-hidden="true"></div>
 
   <footer>
     <p class="sign">Annie &amp; Jay</p>
     <p class="tag">#AJCloseTheGap</p>
     <p class="fine">We can't wait to celebrate with you.<br/>For questions, reach out to Annie or Jay directly.</p>
+    <p class="fine" style="margin-top:10px;">Look for the QR code on your invitation to find your table and the day's program.</p>
   </footer>
 
 </div>
@@ -594,6 +603,24 @@
     }).catch(function(){ /* quietly ignore — wall is decorative */ });
   }
   loadGuestWall();
+
+  // ---------- Wedding Updates ----------
+  function loadUpdates(){
+    fetch('/api/updates').then(function(r){ return r.json(); }).then(function(data){
+      var el = document.getElementById('updatesList');
+      var items = data.updates || [];
+      if (!items.length) return; // keep the friendly empty state already in the HTML
+      el.innerHTML = items.map(function(u){
+        var d = new Date(u.postedAt);
+        var dateStr = isNaN(d) ? '' : d.toLocaleDateString(undefined, { month:'long', day:'numeric', year:'numeric' });
+        var text = String(u.message).replace(/</g,'&lt;');
+        return '<div class="update-item">' +
+          (dateStr ? '<p class="update-date">' + dateStr + '</p>' : '') +
+          '<p class="update-text">' + text + '</p></div>';
+      }).join('');
+    }).catch(function(){ /* keep the friendly empty state on failure */ });
+  }
+  loadUpdates();
 </script>
 </body>
 </html>

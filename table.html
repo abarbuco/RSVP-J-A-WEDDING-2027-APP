@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Find Your Table — Annie &amp; Jay</title>
+<meta name="description" content="Your table number and the wedding program — Annie &amp; Jay, #AJCloseTheGap." />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%92%8D%3C/text%3E%3C/svg%3E" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600&family=Jost:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ivory:#f6efe2; --paper:#fffcf6; --ink:#2b211a; --ink-soft:#6b5c4e;
+    --rust:#7a4a2e; --olive:#556339; --gold-soft:#c99a4a; --line:rgba(43,33,26,.15);
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --ivory:#231a14; --paper:#2b2019; --ink:#f3e9d8; --ink-soft:#cdb9a2;
+      --rust:#d99a6c; --olive:#a3b37a; --gold-soft:#e6c467; --line:rgba(243,233,216,.16);
+    }
+  }
+  *{ box-sizing:border-box; }
+  body{
+    margin:0; background:var(--ivory); color:var(--ink);
+    font-family:'Jost', ui-sans-serif, system-ui, sans-serif;
+    padding:28px 18px 60px;
+  }
+  .wrap{ max-width:520px; margin:0 auto; }
+  h1{ font-family:'Cormorant Garamond', Georgia, serif; font-weight:600; font-size:2.1rem; margin:0 0 4px; text-align:center; }
+  .sub{ color:var(--ink-soft); font-size:1rem; margin:0 0 26px; text-align:center; }
+
+  .card{
+    background:var(--paper); border:1px solid var(--line); border-radius:10px;
+    padding:26px 22px; margin-bottom:22px; text-align:center;
+  }
+  .greeting{ font-size:1.15rem; margin:0 0 6px; }
+  .table-num{
+    font-family:'Cormorant Garamond', serif; font-weight:600; color:var(--rust);
+    font-size:clamp(2.6rem, 14vw, 3.6rem); line-height:1.1; margin:6px 0;
+  }
+  .table-label{ font-size:.8rem; letter-spacing:.14em; text-transform:uppercase; color:var(--ink-soft); }
+  .hint{ font-size:1rem; color:var(--ink-soft); margin-top:8px; }
+
+  .searchcard input[type="text"]{
+    width:100%; font-family:'Jost', sans-serif; font-size:1.15rem; padding:14px 16px;
+    border:1px solid var(--line); border-radius:8px; background:var(--ivory); color:var(--ink);
+    margin-bottom:12px; text-align:center;
+  }
+  .btn{
+    display:inline-block; width:100%; padding:14px; border-radius:8px; border:1px solid var(--rust);
+    background:var(--rust); color:#fff8ee; font-family:'Jost', sans-serif; font-size:1.05rem;
+    cursor:pointer;
+  }
+  .btn:disabled{ opacity:.6; }
+  .msg{ margin-top:14px; font-size:1rem; }
+  .msg.error{ color:var(--rust); }
+  .candidates{ margin-top:10px; font-size:.95rem; color:var(--ink-soft); }
+  .candidates button{
+    display:block; width:100%; margin-top:8px; padding:10px; border-radius:8px;
+    border:1px solid var(--line); background:var(--ivory); color:var(--ink); font-size:1rem; cursor:pointer;
+  }
+
+  .program h2{ font-family:'Cormorant Garamond', Georgia, serif; font-size:1.5rem; margin:0 0 14px; text-align:center; }
+  .program-list{ display:flex; flex-direction:column; gap:12px; }
+  .program-item{
+    display:flex; gap:14px; align-items:baseline; border-bottom:1px solid var(--line); padding-bottom:12px;
+  }
+  .program-item:last-child{ border-bottom:0; padding-bottom:0; }
+  .program-item .time{ flex:0 0 auto; min-width:78px; font-weight:600; color:var(--rust); font-size:1.05rem; }
+  .program-item .title{ font-size:1.05rem; }
+  .program-empty{ text-align:center; color:var(--ink-soft); font-style:italic; }
+
+  .backlink{ display:block; text-align:center; margin-top:26px; color:var(--ink-soft); font-size:.95rem; }
+  .backlink a{ color:var(--rust); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Find Your Table</h1>
+  <p class="sub">Annie &amp; Jay · #AJCloseTheGap</p>
+
+  <div class="card" id="resultCard" hidden></div>
+
+  <div class="card searchcard" id="searchCard" hidden>
+    <p class="greeting" style="margin-top:0;">Type your name to find your table</p>
+    <input type="text" id="nameInput" placeholder="e.g. Maria Santos" autocomplete="name" />
+    <button class="btn" id="searchBtn">Find My Table</button>
+    <div class="msg" id="searchMsg"></div>
+  </div>
+
+  <div class="card program">
+    <h2>Wedding Program</h2>
+    <div class="program-list" id="programList"><p class="program-empty">Loading…</p></div>
+  </div>
+
+  <p class="backlink"><a href="/">&larr; Back to the invitation</a></p>
+</div>
+
+<script>
+  function fmtTable(t){
+    if (!t) return null;
+    return /^\d+$/.test(t) ? ('Table ' + t) : t;
+  }
+
+  function showResult(name, table){
+    var card = document.getElementById('resultCard');
+    var big = fmtTable(table);
+    card.innerHTML =
+      '<p class="greeting">Welcome, ' + name + '!</p>' +
+      (big
+        ? '<p class="table-num">' + big + '</p><p class="table-label">Your Table</p>'
+        : '<p class="hint">Your table assignment will be posted here soon — please check back or ask Annie or Jay.</p>');
+    card.hidden = false;
+  }
+
+  function showNotFound(msg, candidates){
+    var card = document.getElementById('searchCard');
+    var msgEl = document.getElementById('searchMsg');
+    card.hidden = false;
+    msgEl.className = 'msg error';
+    msgEl.textContent = msg;
+    var candWrap = document.getElementById('candList');
+    if (candWrap) candWrap.remove();
+    if (candidates && candidates.length){
+      var wrap = document.createElement('div');
+      wrap.className = 'candidates';
+      wrap.id = 'candList';
+      wrap.innerHTML = '<p>Did you mean:</p>';
+      candidates.forEach(function(n){
+        var b = document.createElement('button');
+        b.type = 'button';
+        b.textContent = n;
+        b.addEventListener('click', function(){ lookupByName(n); });
+        wrap.appendChild(b);
+      });
+      msgEl.after(wrap);
+    }
+  }
+
+  function lookupByName(name){
+    var msgEl = document.getElementById('searchMsg');
+    msgEl.className = 'msg';
+    msgEl.textContent = 'Looking…';
+    var candWrap = document.getElementById('candList');
+    if (candWrap) candWrap.remove();
+    fetch('/api/table?name=' + encodeURIComponent(name)).then(function(r){ return r.json(); }).then(function(data){
+      if (data.found){
+        document.getElementById('searchCard').hidden = true;
+        msgEl.textContent = '';
+        showResult(data.name, data.table);
+      } else if (data.multiple && data.multiple.length){
+        showNotFound('A few guests match that name — please pick yours:', data.multiple);
+      } else {
+        showNotFound("We couldn't find that name on the guest list. Please check the spelling, or ask Annie or Jay.");
+      }
+    }).catch(function(){
+      msgEl.className = 'msg error';
+      msgEl.textContent = 'Network hiccup — please try again in a moment.';
+    });
+  }
+
+  document.getElementById('searchBtn').addEventListener('click', function(){
+    var name = document.getElementById('nameInput').value.trim();
+    if (!name) return;
+    lookupByName(name);
+  });
+  document.getElementById('nameInput').addEventListener('keydown', function(e){
+    if (e.key === 'Enter') document.getElementById('searchBtn').click();
+  });
+
+  // ---------- Personal link: /table/<id> ----------
+  var parts = location.pathname.split('/').filter(Boolean);
+  var personalId = (parts[0] === 'table' && parts[1]) ? parts[1] : null;
+
+  if (personalId){
+    fetch('/api/table/' + encodeURIComponent(personalId)).then(function(r){ return r.json(); }).then(function(data){
+      if (data.found){
+        showResult(data.name, data.table);
+      } else {
+        document.getElementById('searchCard').hidden = false;
+        showNotFound("We couldn't match this QR code. Please type your name instead:");
+      }
+    }).catch(function(){
+      document.getElementById('searchCard').hidden = false;
+    });
+  } else {
+    document.getElementById('searchCard').hidden = false;
+  }
+
+  // ---------- Program ----------
+  fetch('/api/program').then(function(r){ return r.json(); }).then(function(data){
+    var el = document.getElementById('programList');
+    var items = data.program || [];
+    if (!items.length){
+      el.innerHTML = '<p class="program-empty">The program will be posted here soon.</p>';
+      return;
+    }
+    el.innerHTML = items.map(function(p){
+      return '<div class="program-item">' +
+        (p.time ? '<span class="time">' + p.time.replace(/</g,'&lt;') + '</span>' : '') +
+        '<span class="title">' + p.title.replace(/</g,'&lt;') + '</span></div>';
+    }).join('');
+  }).catch(function(){
+    document.getElementById('programList').innerHTML = '<p class="program-empty">Could not load the program — please refresh.</p>';
+  });
+</script>
+</body>
+</html>

@@ -186,6 +186,7 @@
   .countdown .tile .num{ font-family:'Cormorant Garamond', serif; font-size:1.7rem; font-weight:600; display:block; }
   .countdown .tile .unit{ font-size:.62rem; letter-spacing:.14em; text-transform:uppercase; opacity:.85; }
   .thank-you-msg{ font-family:'Cormorant Garamond', serif; font-size:1.5rem; color:var(--ink); padding:0 10px; line-height:1.5; }
+  .thank-you-sub{ display:block; font-family:'Jost', sans-serif; font-size:.9rem; color:var(--ink-soft); margin-top:10px; line-height:1.5; }
 
   /* ---------- Closed/locked states ---------- */
   .btn-lg.btn-disabled{
@@ -214,6 +215,7 @@
   /* ---------- What's Happening (updates + find table + photos) ---------- */
   .hub-h3{ font-size:1.2rem; margin:0 0 8px; color:var(--rust); }
   .hub-sub{ color:var(--ink-soft); font-size:.92rem; margin:0 0 16px; line-height:1.5; }
+  .hub-note{ color:var(--ink-soft); font-size:.8rem; font-style:italic; margin:-10px 0 16px; line-height:1.4; }
   .updates-list{ display:flex; flex-direction:column; gap:14px; }
   .update-item{
     border:1px solid var(--line); border-radius:6px; padding:16px 18px; background:var(--ivory);
@@ -412,7 +414,9 @@
       <div class="tile"><span class="num" id="cd-mins">00</span><span class="unit">Mins</span></div>
       <div class="tile"><span class="num" id="cd-secs">00</span><span class="unit">Secs</span></div>
     </div>
-    <p class="thank-you-msg" id="thankYouMsg" hidden>Thank you for celebrating with us! &#10084;<br />&mdash; Annie &amp; Jay</p>
+    <p class="thank-you-msg" id="thankYouMsg" hidden>Thank you for celebrating with us! &#10084;<br />&mdash; Annie &amp; Jay
+      <span class="thank-you-sub">Keep this site as a memory of our wedding — access to download the photos will be here forever.</span>
+    </p>
   </section>
 
   <section class="card section reveal" id="updates">
@@ -435,6 +439,7 @@
       <div>
         <h3 class="hub-h3">Share Your Photos</h3>
         <p class="hub-sub">Snapped something special? Add it here so everyone can see it right away.</p>
+        <p class="hub-note">Photos added here will also be saved to our Google Drive album the day after the wedding.</p>
         <p class="closed-note" id="addPhotoClosedNote" hidden>Photo uploads have closed — thank you so much for sharing your memories! You can still view and download every photo below.</p>
         <div class="photo-gallery" id="photoGallery"><p class="photo-gallery-empty">Loading…</p></div>
         <div class="photo-gallery-nav" id="photoGalleryNav" hidden>

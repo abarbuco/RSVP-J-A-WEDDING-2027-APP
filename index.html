@@ -294,10 +294,12 @@
   footer .tag{ font-family:'Cormorant Garamond', serif; font-style:italic; color:var(--gold); font-size:1.1rem; margin:8px 0 14px; }
   footer .fine{ font-size:.78rem; line-height:1.6; }
   footer .admin-dot{
-    display:inline-block; margin-top:16px; font-size:.7rem; opacity:.28;
-    text-decoration:none; filter:grayscale(1);
+    display:inline-flex; align-items:center; gap:5px; margin-top:16px;
+    font-family:'Jost', sans-serif; font-size:.68rem; letter-spacing:.08em;
+    text-transform:uppercase; color:var(--ink-soft); opacity:.5;
+    text-decoration:none;
   }
-  footer .admin-dot:hover{ opacity:.7; }
+  footer .admin-dot:hover{ opacity:.9; }
 
   @media (prefers-reduced-motion: no-preference){
     .reveal{ animation: rise .7s ease both; }
@@ -499,7 +501,7 @@
     <p class="tag">#AJCloseTheGap</p>
     <p class="fine">We can't wait to celebrate with you.<br/>For questions, please reach out to Katrina Simbulas, our wedding coordinator, via WhatsApp at <a href="https://wa.me/639175142402">+63 917 514 2402</a>.</p>
     <p class="fine" style="margin-top:10px;">Look for the QR code on your invitation to find your table and the day's program.</p>
-    <a href="/admin" class="admin-dot" aria-label="Admin">&#128274;</a>
+    <a href="/admin" class="admin-dot">&#128274; Admin</a>
   </footer>
 
 </div>

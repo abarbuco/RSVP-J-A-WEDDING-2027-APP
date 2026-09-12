@@ -1,0 +1,518 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Anne &amp; Jay's Wedding — #AJCloseTheGap</title>
+<meta name="description" content="Join Anne Queen &amp; Jay as they close the gap — February 21, 2027, Plaza Ibarra, Quezon City." />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%92%8D%3C/text%3E%3C/svg%3E" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,500&family=Jost:wght@400;500;600&family=Mrs+Saint+Delafield&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ivory:#f6efe2;
+    --paper:#fffcf6;
+    --ink:#2b211a;
+    --ink-soft:#6b5c4e;
+    --rust:#7a4a2e;
+    --rust-deep:#5c351f;
+    --gold:#a8792e;
+    --gold-soft:#c99a4a;
+    --olive:#556339;
+    --line:rgba(43,33,26,.15);
+    --shadow: 0 18px 40px -22px rgba(43,33,26,.35);
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --ivory:#231a14;
+      --paper:#2b2019;
+      --ink:#f3e9d8;
+      --ink-soft:#cdb9a2;
+      --rust:#d99a6c;
+      --rust-deep:#e8b088;
+      --gold:#d3a355;
+      --gold-soft:#e6c467;
+      --olive:#a3b37a;
+      --line:rgba(243,233,216,.16);
+      --shadow: 0 18px 40px -20px rgba(0,0,0,.55);
+    }
+  }
+  *{ box-sizing:border-box; }
+  html{ scroll-behavior:smooth; }
+  body{
+    margin:0;
+    background:var(--ivory);
+    color:var(--ink);
+    font-family:'Jost', ui-sans-serif, system-ui, sans-serif;
+    padding-inline:16px;
+    -webkit-font-smoothing:antialiased;
+  }
+  body::before{
+    content:"";
+    position:fixed;
+    inset:0;
+    z-index:-1;
+    background-image:
+      repeating-linear-gradient(45deg, var(--line) 0 1px, transparent 1px 26px),
+      repeating-linear-gradient(-45deg, var(--line) 0 1px, transparent 1px 26px);
+    opacity:.35;
+  }
+  .page{
+    max-width:680px;
+    margin:0 auto;
+    padding-block:40px 64px;
+  }
+  .card{
+    background:var(--paper);
+    border:1px solid var(--line);
+    border-radius:6px;
+    box-shadow:var(--shadow);
+  }
+  h1,h2,h3{ font-family:'Cormorant Garamond', Georgia, serif; font-weight:600; margin:0; text-wrap:balance; }
+  .weave-divider{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:10px;
+    margin-block:28px;
+    color:var(--gold-soft);
+  }
+  .weave-divider svg{ display:block; }
+  .weave-divider .rule{ flex:1; height:1px; background:linear-gradient(90deg, transparent, var(--line) 20%, var(--line) 80%, transparent); max-width:120px; }
+
+  /* ---------- Hero ---------- */
+  .hero{
+    text-align:center;
+    padding:48px 28px 40px;
+    position:relative;
+    overflow:hidden;
+  }
+  .hero .petal{ position:absolute; opacity:.5; }
+  .hero .petal.tl{ top:14px; left:14px; }
+  .hero .petal.br{ bottom:14px; right:14px; transform:rotate(180deg); }
+  .eyebrow{
+    font-size:.72rem;
+    letter-spacing:.22em;
+    text-transform:uppercase;
+    color:var(--ink-soft);
+    margin:0 0 18px;
+  }
+  .monogram{
+    font-family:'Mrs Saint Delafield', cursive;
+    font-size:clamp(3.2rem, 12vw, 4.6rem);
+    line-height:1;
+    color:var(--rust);
+    margin:0 0 6px;
+  }
+  .fullnames{
+    font-size:.78rem;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    color:var(--ink-soft);
+    margin:0 0 26px;
+  }
+  .fullnames .amp{ color:var(--gold-soft); padding-inline:.4em; font-style:italic; text-transform:none; letter-spacing:0; }
+  .save-the-date{
+    font-size:clamp(1.6rem, 5vw, 2.15rem);
+    letter-spacing:.06em;
+    text-transform:uppercase;
+    color:var(--ink);
+  }
+  .save-the-date em{ color:var(--rust); font-style:normal; }
+  .when{
+    margin-top:8px;
+    font-size:1rem;
+    color:var(--ink-soft);
+    letter-spacing:.02em;
+  }
+  .hashtag-chip{
+    display:inline-block;
+    margin-top:22px;
+    padding:8px 20px;
+    border:1px solid var(--gold-soft);
+    border-radius:999px;
+    color:var(--gold);
+    font-style:italic;
+    font-family:'Cormorant Garamond', serif;
+    font-size:1.15rem;
+    letter-spacing:.02em;
+  }
+
+  /* ---------- Countdown ---------- */
+  .countdown-wrap{ text-align:center; padding:30px 20px; }
+  .countdown-label{
+    font-size:.72rem; letter-spacing:.2em; text-transform:uppercase; color:var(--ink-soft); margin-bottom:16px;
+  }
+  .countdown{
+    display:flex; justify-content:center; gap:10px; flex-wrap:wrap;
+  }
+  .countdown .tile{
+    background:var(--olive);
+    color:#fbf3e7;
+    border-radius:6px;
+    min-width:66px;
+    padding:12px 6px 10px;
+    font-variant-numeric: tabular-nums;
+  }
+  .countdown .tile .num{ font-family:'Cormorant Garamond', serif; font-size:1.7rem; font-weight:600; display:block; }
+  .countdown .tile .unit{ font-size:.62rem; letter-spacing:.14em; text-transform:uppercase; opacity:.85; }
+
+  /* ---------- Section heading ---------- */
+  .section{ padding:36px 30px; }
+  .section h2{ font-size:1.6rem; margin-bottom:4px; }
+  .section .sub{ color:var(--ink-soft); font-size:.92rem; margin-bottom:22px; }
+
+  /* ---------- Details grid ---------- */
+  .details-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:18px;
+  }
+  @media (max-width:560px){ .details-grid{ grid-template-columns:1fr; } }
+  .detail-card{
+    border:1px solid var(--line);
+    border-radius:6px;
+    padding:20px;
+    background:var(--ivory);
+  }
+  .detail-card h3{ font-size:1.15rem; color:var(--rust); margin-bottom:10px; }
+  .detail-card p{ margin:0 0 6px; line-height:1.55; font-size:.95rem; }
+  .btn{
+    display:inline-flex; align-items:center; gap:8px;
+    margin-top:14px;
+    padding:9px 16px;
+    border-radius:999px;
+    border:1px solid var(--rust);
+    color:var(--rust);
+    background:transparent;
+    font-family:'Jost', sans-serif;
+    font-size:.85rem;
+    letter-spacing:.03em;
+    cursor:pointer;
+    text-decoration:none;
+    transition:background .15s ease, color .15s ease;
+  }
+  .btn:hover{ background:var(--rust); color:#fff8ee; }
+  .btn.solid{ background:var(--rust); color:#fff8ee; }
+  .btn.solid:hover{ background:var(--rust-deep); border-color:var(--rust-deep); }
+
+  .swatches{ display:flex; gap:8px; margin:12px 0 14px; }
+  .swatch{ width:28px; height:28px; border-radius:50%; border:1px solid var(--line); }
+
+  /* ---------- Map ---------- */
+  .map-frame{
+    border:0; width:100%; height:280px; display:block; border-radius:6px; filter:saturate(.92);
+  }
+  @media (prefers-color-scheme: dark){ .map-frame{ filter:saturate(.8) invert(.92) hue-rotate(180deg); } }
+
+  /* ---------- RSVP ---------- */
+  .field{ margin-bottom:16px; }
+  .field label{ display:block; font-size:.8rem; letter-spacing:.05em; text-transform:uppercase; color:var(--ink-soft); margin-bottom:6px; }
+  .field input[type="text"], .field textarea, .field select{
+    width:100%;
+    font-family:'Jost', sans-serif;
+    font-size:1rem;
+    padding:10px 12px;
+    border:1px solid var(--line);
+    border-radius:5px;
+    background:var(--paper);
+    color:var(--ink);
+  }
+  .field textarea{ resize:vertical; min-height:70px; }
+  .radio-row{ display:flex; gap:10px; flex-wrap:wrap; }
+  .radio-row label{
+    flex:1; min-width:140px;
+    display:flex; align-items:center; gap:8px;
+    border:1px solid var(--line);
+    border-radius:6px;
+    padding:10px 12px;
+    cursor:pointer;
+    text-transform:none; letter-spacing:0; font-size:.95rem; color:var(--ink);
+  }
+  .radio-row input{ accent-color:var(--rust); }
+  .radio-row label.active{ border-color:var(--rust); background:rgba(122,74,46,.08); }
+  #guestCountField{ display:none; }
+  .rsvp-submit{ width:100%; justify-content:center; padding:12px; font-size:.95rem; }
+  .form-msg{ margin-top:14px; padding:12px 14px; border-radius:6px; font-size:.9rem; display:none; }
+  .form-msg.error{ display:block; background:rgba(122,74,46,.12); color:var(--rust-deep); }
+  .form-msg.success{ display:block; background:rgba(107,111,58,.12); color:var(--olive); }
+
+  .stats-row{ display:flex; gap:14px; margin:24px 0; flex-wrap:wrap; }
+  .stat{ flex:1; min-width:120px; text-align:center; border:1px solid var(--line); border-radius:6px; padding:14px 8px; background:var(--ivory); }
+  .stat .n{ font-family:'Cormorant Garamond', serif; font-size:1.8rem; font-weight:600; color:var(--rust); font-variant-numeric: tabular-nums; }
+  .stat .l{ font-size:.68rem; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-soft); }
+
+  .guest-wall-label{ font-size:.8rem; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-soft); margin-bottom:10px; }
+  .guest-wall{ display:flex; flex-wrap:wrap; gap:8px; }
+  .guest-pill{
+    padding:6px 14px; border-radius:999px; background:var(--ivory); border:1px solid var(--line);
+    font-size:.85rem; color:var(--ink);
+  }
+  .guest-wall .empty{ color:var(--ink-soft); font-style:italic; font-size:.9rem; }
+
+  /* ---------- Footer ---------- */
+  footer{ text-align:center; padding:38px 24px 4px; color:var(--ink-soft); }
+  footer .sign{ font-family:'Mrs Saint Delafield', cursive; font-size:2rem; color:var(--rust); margin-bottom:6px; }
+  footer .tag{ font-family:'Cormorant Garamond', serif; font-style:italic; color:var(--gold); font-size:1.1rem; margin:8px 0 14px; }
+  footer .fine{ font-size:.78rem; line-height:1.6; }
+
+  @media (prefers-reduced-motion: no-preference){
+    .reveal{ animation: rise .7s ease both; }
+    .reveal:nth-of-type(2){ animation-delay:.08s; }
+    .reveal:nth-of-type(3){ animation-delay:.16s; }
+  }
+  @keyframes rise{ from{ opacity:0; transform:translateY(10px);} to{ opacity:1; transform:none; } }
+
+  a{ color:inherit; }
+  :focus-visible{ outline:2px solid var(--gold); outline-offset:2px; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <section class="card hero reveal">
+    <svg class="petal tl" width="46" height="46" viewBox="0 0 46 46" fill="none"><g fill="currentColor" style="color:var(--olive)"><circle cx="23" cy="10" r="7"/><circle cx="34" cy="18" r="7"/><circle cx="30" cy="31" r="7"/><circle cx="16" cy="31" r="7"/><circle cx="12" cy="18" r="7"/><circle cx="23" cy="20" r="5" style="color:var(--gold-soft)" fill="var(--gold-soft)"/></g></svg>
+    <svg class="petal br" width="46" height="46" viewBox="0 0 46 46" fill="none"><g fill="currentColor" style="color:var(--olive)"><circle cx="23" cy="10" r="7"/><circle cx="34" cy="18" r="7"/><circle cx="30" cy="31" r="7"/><circle cx="16" cy="31" r="7"/><circle cx="12" cy="18" r="7"/><circle cx="23" cy="20" r="5" style="color:var(--gold-soft)" fill="var(--gold-soft)"/></g></svg>
+
+    <p class="eyebrow">Together with their families</p>
+    <h1 class="monogram">Anne &amp; Jay</h1>
+    <p class="fullnames">Anne Queen C. Barbuco <span class="amp">&amp;</span> Jay B. Josef</p>
+    <p class="save-the-date">are joyfully <em>closing the gap</em></p>
+    <p class="when">Sunday, February 21, 2027 · 4:00 in the afternoon</p>
+    <span class="hashtag-chip">#AJCloseTheGap</span>
+  </section>
+
+  <div class="weave-divider" aria-hidden="true">
+    <span class="rule"></span>
+    <svg width="18" height="18" viewBox="0 0 18 18"><path d="M9 0 L18 9 L9 18 L0 9 Z" fill="currentColor"/></svg>
+    <span class="rule"></span>
+  </div>
+
+  <section class="card countdown-wrap reveal">
+    <p class="countdown-label">Until we close the gap</p>
+    <div class="countdown" id="countdown" aria-live="polite">
+      <div class="tile"><span class="num" id="cd-days">00</span><span class="unit">Days</span></div>
+      <div class="tile"><span class="num" id="cd-hours">00</span><span class="unit">Hours</span></div>
+      <div class="tile"><span class="num" id="cd-mins">00</span><span class="unit">Mins</span></div>
+      <div class="tile"><span class="num" id="cd-secs">00</span><span class="unit">Secs</span></div>
+    </div>
+  </section>
+
+  <section class="card section reveal" id="details">
+    <h2>Ceremony &amp; Reception</h2>
+    <p class="sub">One venue, one afternoon — please plan to stay for both.</p>
+    <div class="details-grid">
+      <div class="detail-card">
+        <h3>The Venue</h3>
+        <p><strong>Plaza Ibarra</strong></p>
+        <p>77 Timog Ave, Diliman<br/>Quezon City, 1103 Metro Manila<br/>Philippines</p>
+        <p>4:00 PM onwards</p>
+        <a class="btn" id="calendarBtn" href="#">Add to calendar ↓</a>
+      </div>
+      <div class="detail-card">
+        <h3>Dress Code</h3>
+        <p><strong>Modern Filipiniana</strong></p>
+        <div class="swatches" aria-hidden="true">
+          <span class="swatch" style="background:#556339" title="Banana-leaf olive"></span>
+          <span class="swatch" style="background:#7a4a2e" title="Coconut wood"></span>
+          <span class="swatch" style="background:#c99a4a" title="Antique gold"></span>
+          <span class="swatch" style="background:#f5f0e6;border-color:#c99a4a" title="Ivory"></span>
+        </div>
+        <p>Barong-inspired tops, ternos, and flowing skirts in earthy tropical tones — banana-leaf olive, coconut wood, and antique gold, grounded in ivory. Kindly reserve white for the bride.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="card section reveal">
+    <h2>Getting There</h2>
+    <p class="sub">Plaza Ibarra, Timog Avenue, Diliman, Quezon City</p>
+    <iframe class="map-frame" title="Map to Plaza Ibarra" loading="lazy"
+      src="https://www.google.com/maps?q=14.6342705,121.038853&z=17&output=embed"
+      referrerpolicy="no-referrer-when-downgrade"></iframe>
+    <a class="btn" style="margin-top:14px" target="_blank" rel="noopener"
+      href="https://www.google.com/maps/place/Plaza+Ibarra/@14.6342705,121.038853,17z/data=!4m6!3m5!1s0x3397b7ade1702d0d:0x370020cf61876292!8m2!3d14.6342705!4d121.038853">
+      Get directions ↗
+    </a>
+  </section>
+
+  <section class="card section reveal" id="rsvp">
+    <h2>RSVP</h2>
+    <p class="sub">Kindly respond at your earliest so we can plan the celebration. <em>(RSVP deadline to be announced.)</em></p>
+
+    <form id="rsvpForm" novalidate>
+      <div class="field">
+        <label for="name">Your name</label>
+        <input type="text" id="name" name="name" placeholder="e.g. Maria Santos" autocomplete="name" required />
+      </div>
+
+      <div class="field">
+        <label>Will you be joining us?</label>
+        <div class="radio-row">
+          <label id="labelYes"><input type="radio" name="attending" value="yes" required /> Joyfully accepts</label>
+          <label id="labelNo"><input type="radio" name="attending" value="no" /> Regretfully declines</label>
+        </div>
+      </div>
+
+      <div class="field" id="guestCountField">
+        <label for="guests">Number of guests (including you)</label>
+        <select id="guests" name="guests">
+          <option value="1">Just me</option>
+          <option value="2">2</option>
+          <option value="3">3</option>
+          <option value="4">4</option>
+          <option value="5">5</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="message">Message for Anne &amp; Jay (optional)</label>
+        <textarea id="message" name="message" placeholder="A well-wish, a song request, a dietary note…"></textarea>
+      </div>
+
+      <button type="submit" class="btn solid rsvp-submit">Send our RSVP</button>
+      <div class="form-msg" id="formMsg" role="status"></div>
+    </form>
+
+    <div class="weave-divider" aria-hidden="true"><span class="rule"></span></div>
+
+    <div class="stats-row" id="statsRow">
+      <div class="stat"><span class="n" id="statGuests">–</span><span class="l">Joining</span></div>
+      <div class="stat"><span class="n" id="statFamilies">–</span><span class="l">Responses</span></div>
+    </div>
+
+    <p class="guest-wall-label">Joining the celebration</p>
+    <div class="guest-wall" id="guestWall"><span class="empty">Be the first to RSVP!</span></div>
+  </section>
+
+  <footer>
+    <p class="sign">Anne &amp; Jay</p>
+    <p class="tag">#AJCloseTheGap</p>
+    <p class="fine">We can't wait to celebrate with you.<br/>For questions, reach out to Anne or Jay directly.</p>
+  </footer>
+
+</div>
+
+<script>
+  // ---------- Countdown ----------
+  var target = new Date("2027-02-21T16:00:00+08:00").getTime();
+  function tick(){
+    var now = Date.now();
+    var diff = Math.max(0, target - now);
+    var s = Math.floor(diff/1000);
+    var d = Math.floor(s/86400); s -= d*86400;
+    var h = Math.floor(s/3600); s -= h*3600;
+    var m = Math.floor(s/60); s -= m*60;
+    document.getElementById('cd-days').textContent = String(d).padStart(2,'0');
+    document.getElementById('cd-hours').textContent = String(h).padStart(2,'0');
+    document.getElementById('cd-mins').textContent = String(m).padStart(2,'0');
+    document.getElementById('cd-secs').textContent = String(s).padStart(2,'0');
+  }
+  tick();
+  setInterval(tick, 1000);
+
+  // ---------- Attending toggle ----------
+  var guestCountField = document.getElementById('guestCountField');
+  var labelYes = document.getElementById('labelYes');
+  var labelNo = document.getElementById('labelNo');
+  document.querySelectorAll('input[name="attending"]').forEach(function(radio){
+    radio.addEventListener('change', function(){
+      guestCountField.style.display = (this.value === 'yes') ? 'block' : 'none';
+      labelYes.classList.toggle('active', this.value === 'yes');
+      labelNo.classList.toggle('active', this.value === 'no');
+    });
+  });
+
+  // ---------- Add to calendar ----------
+  document.getElementById('calendarBtn').addEventListener('click', function(e){
+    e.preventDefault();
+    var ics = [
+      "BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//AJCloseTheGap//Wedding//EN",
+      "BEGIN:VEVENT",
+      "UID:ajclosethegap-" + Date.now() + "@plazaibarra",
+      "DTSTAMP:" + new Date().toISOString().replace(/[-:]/g,'').split('.')[0] + "Z",
+      "DTSTART:20270221T080000Z",
+      "DTEND:20270221T130000Z",
+      "SUMMARY:Anne \\& Jay's Wedding — #AJCloseTheGap",
+      "DESCRIPTION:Ceremony and reception for Anne Queen C. Barbuco \\& Jay B. Josef. #AJCloseTheGap",
+      "LOCATION:Plaza Ibarra\\, 77 Timog Ave\\, Diliman\\, Quezon City\\, 1103 Metro Manila\\, Philippines",
+      "END:VEVENT","END:VCALENDAR"
+    ].join("\r\n");
+    var blob = new Blob([ics], { type: "text/calendar" });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url; a.download = "Anne-and-Jay-Wedding.ics";
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 2000);
+  });
+
+  // ---------- RSVP submit ----------
+  var form = document.getElementById('rsvpForm');
+  var formMsg = document.getElementById('formMsg');
+  form.addEventListener('submit', function(e){
+    e.preventDefault();
+    formMsg.className = 'form-msg';
+    var attendingEl = form.querySelector('input[name="attending"]:checked');
+    var payload = {
+      name: document.getElementById('name').value.trim(),
+      attending: attendingEl ? attendingEl.value : null,
+      guests: document.getElementById('guests').value,
+      message: document.getElementById('message').value.trim()
+    };
+    if (!payload.name || !payload.attending) {
+      formMsg.textContent = "Please fill in your name and let us know if you can make it.";
+      formMsg.className = 'form-msg error';
+      return;
+    }
+    var btn = form.querySelector('.rsvp-submit');
+    btn.disabled = true; btn.textContent = "Sending…";
+    fetch('/api/rsvp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    }).then(function(r){ return r.json().then(function(data){ return {ok:r.ok, data:data}; }); })
+      .then(function(res){
+        btn.disabled = false; btn.textContent = "Send our RSVP";
+        if (!res.ok) {
+          formMsg.textContent = res.data.error || "Something went wrong — please try again.";
+          formMsg.className = 'form-msg error';
+          return;
+        }
+        formMsg.textContent = payload.attending === 'yes'
+          ? "Thank you, " + payload.name + "! We can't wait to celebrate with you."
+          : "Thank you for letting us know, " + payload.name + ". You'll be missed!";
+        formMsg.className = 'form-msg success';
+        form.reset();
+        guestCountField.style.display = 'none';
+        labelYes.classList.remove('active'); labelNo.classList.remove('active');
+        loadGuestWall();
+      }).catch(function(){
+        btn.disabled = false; btn.textContent = "Send our RSVP";
+        formMsg.textContent = "Network hiccup — please try again in a moment.";
+        formMsg.className = 'form-msg error';
+      });
+  });
+
+  // ---------- Guest wall ----------
+  function loadGuestWall(){
+    fetch('/api/rsvps').then(function(r){ return r.json(); }).then(function(data){
+      document.getElementById('statGuests').textContent = data.totalGuests;
+      document.getElementById('statFamilies').textContent = data.totalResponses;
+      var wall = document.getElementById('guestWall');
+      wall.innerHTML = '';
+      if (!data.guests.length) {
+        wall.innerHTML = '<span class="empty">Be the first to RSVP!</span>';
+        return;
+      }
+      data.guests.forEach(function(g){
+        var pill = document.createElement('span');
+        pill.className = 'guest-pill';
+        pill.textContent = g.name + (g.guests > 1 ? ' +' + (g.guests - 1) : '');
+        wall.appendChild(pill);
+      });
+    }).catch(function(){ /* quietly ignore — wall is decorative */ });
+  }
+  loadGuestWall();
+</script>
+</body>
+</html>

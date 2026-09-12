@@ -4,6 +4,7 @@ const path = require("path");
 const crypto = require("crypto");
 const QRCode = require("qrcode");
 const XLSX = require("xlsx");
+const archiver = require("archiver");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -769,6 +770,47 @@ app.delete("/api/admin/guest-photos/:id", (req, res) => {
   deleteUpdateImage(target.imageUrl);
   writeGuestPhotos(photos.filter((p) => p.id !== req.params.id));
   res.json({ ok: true });
+});
+
+// One-click download of every guest photo as a single ZIP file, so Annie can
+// grab them all in one go and drop them into Google Drive (or anywhere else)
+// herself — no Google account setup or ongoing integration needed. Each file
+// keeps a friendly name inside the zip (the guest's name if they gave one,
+// plus the date, so photos don't collide or look like a random ID).
+app.get("/api/admin/guest-photos/export", (req, res) => {
+  const photos = readGuestPhotos();
+  if (!photos.length) {
+    return res.status(404).json({ error: "There are no guest photos to export yet." });
+  }
+
+  res.attachment(`aj-guest-photos-${new Date().toISOString().slice(0, 10)}.zip`);
+  const archive = archiver("zip", { zlib: { level: 9 } });
+  archive.on("error", (err) => {
+    console.error("Guest photo export failed:", err);
+    if (!res.headersSent) res.status(500);
+    res.end();
+  });
+  archive.pipe(res);
+
+  const usedNames = new Set();
+  photos.forEach((p) => {
+    const filePath = path.join(UPLOADS_DIR, path.basename(p.imageUrl || ""));
+    if (!fs.existsSync(filePath)) return; // skip any record whose file is missing
+    const ext = path.extname(filePath) || ".jpg";
+    const dateStamp = (p.uploadedAt || "").slice(0, 10) || "undated";
+    const who = String(p.name || "guest").trim().replace(/[^a-z0-9 _-]/gi, "").slice(0, 40) || "guest";
+    let base = `${dateStamp}-${who}`;
+    let name = `${base}${ext}`;
+    let n = 2;
+    while (usedNames.has(name.toLowerCase())) {
+      name = `${base}-${n}${ext}`;
+      n++;
+    }
+    usedNames.add(name.toLowerCase());
+    archive.file(filePath, { name });
+  });
+
+  archive.finalize();
 });
 
 // --- Wedding Program (run-of-show) -----------------------------------------

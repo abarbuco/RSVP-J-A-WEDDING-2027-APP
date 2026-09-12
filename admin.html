@@ -192,6 +192,10 @@
   <div class="panel">
     <h2>Guest Photos</h2>
     <p class="desc">Photos guests upload right from the invitation page appear here and in their live gallery instantly — no approval needed before they're visible. Remove any photo below if it shouldn't be up.</p>
+    <p style="margin:2px 0 14px;">
+      <a id="exportPhotosBtn" class="file-btn" style="display:inline-block; text-decoration:none;" href="/api/admin/guest-photos/export">Export All Photos (.zip)</a>
+      <span id="exportPhotosMsg" style="margin-left:10px; font-size:.85rem;"></span>
+    </p>
     <div class="photo-grid" id="guestPhotosList"><p class="empty">Loading…</p></div>
   </div>
 
@@ -536,10 +540,16 @@
 
   // ================= Guest Photos =================
   var guestPhotosListEl = document.getElementById('guestPhotosList');
+  var exportPhotosBtn = document.getElementById('exportPhotosBtn');
+  var exportPhotosMsg = document.getElementById('exportPhotosMsg');
 
   function loadGuestPhotos(){
     fetch('/api/guest-photos?limit=200').then(function(r){ return r.json(); }).then(function(data){
       var photos = data.photos || [];
+      var hasPhotos = photos.length > 0;
+      exportPhotosBtn.style.opacity = hasPhotos ? '1' : '.5';
+      exportPhotosBtn.style.pointerEvents = hasPhotos ? 'auto' : 'none';
+      exportPhotosMsg.textContent = hasPhotos ? '' : 'Nothing to export yet.';
       if (!photos.length){ guestPhotosListEl.innerHTML = '<p class="empty">No guest photos yet.</p>'; return; }
       guestPhotosListEl.innerHTML = photos.map(function(p){
         return '<div class="photo-tile" data-id="' + p.id + '">' +

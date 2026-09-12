@@ -9,7 +9,6 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,500&family=Jost:wght@400;500;600&family=Mrs+Saint+Delafield&display=swap" rel="stylesheet">
-<script src="/jsQR.js"></script>
 <style>
   :root{
     --ivory:#f6efe2;
@@ -215,42 +214,6 @@
   }
   .btn-lg.outline:hover{ background:rgba(85,99,57,.08); }
 
-  .ft-input{
-    width:100%; box-sizing:border-box; font-family:'Jost', sans-serif; font-size:1.05rem; padding:14px 16px;
-    border:1px solid var(--line); border-radius:8px; background:var(--paper); color:var(--ink);
-    margin-bottom:12px;
-  }
-  .ft-msg{ margin-top:12px; font-size:.95rem; line-height:1.5; }
-  .ft-msg.error{ color:var(--rust-deep); }
-  .ft-candidates{ margin-top:10px; font-size:.95rem; color:var(--ink-soft); }
-  .ft-candidates button{
-    display:block; width:100%; margin-top:8px; padding:12px; border-radius:8px;
-    border:1px solid var(--line); background:var(--ivory); color:var(--ink); font-size:1rem; cursor:pointer;
-  }
-  .ft-divider{
-    display:flex; align-items:center; gap:10px; margin:18px 0 16px;
-    color:var(--ink-soft); font-size:.8rem; text-transform:uppercase; letter-spacing:.08em;
-  }
-  .ft-divider::before, .ft-divider::after{ content:''; flex:1; height:1px; background:var(--line); }
-  .ft-result{ margin-bottom:18px; }
-  .ft-party-member{
-    background:var(--ivory); border:1px solid var(--line); border-radius:8px; padding:16px 18px; margin-bottom:12px; text-align:left;
-  }
-  .ft-pm-row{ display:flex; align-items:baseline; justify-content:space-between; gap:10px; flex-wrap:wrap; }
-  .ft-pm-name{ font-family:'Cormorant Garamond', Georgia, serif; font-weight:600; font-size:1.2rem; }
-  .ft-pm-table{ font-family:'Cormorant Garamond', serif; font-weight:600; color:var(--rust); font-size:1.3rem; white-space:nowrap; }
-  .ft-pm-table.unassigned{ font-family:'Jost', sans-serif; font-weight:400; font-size:.85rem; color:var(--ink-soft); }
-  .ft-pm-checkin-status{ margin:10px 0 0; font-size:1rem; font-weight:600; color:var(--olive); }
-  .ft-checkin-btn{
-    display:inline-block; width:100%; margin-top:12px; padding:12px; border-radius:8px; border:1px solid var(--olive);
-    background:var(--olive); color:#fff8ee; font-family:'Jost', sans-serif; font-size:1rem; cursor:pointer;
-  }
-  .ft-checkin-btn:disabled{ opacity:.6; }
-  .ft-checkin-msg{ margin-top:8px; font-size:.9rem; color:var(--ink-soft); line-height:1.5; }
-  .ft-greeting{ font-size:1.1rem; margin:0 0 12px; }
-  .ft-more-link{ display:block; text-align:center; margin-top:6px; font-size:.95rem; }
-  .ft-more-link a{ color:var(--rust); }
-
   /* ---------- Details grid ---------- */
   .details-grid{
     display:grid;
@@ -394,20 +357,8 @@
     <div class="weave-divider" aria-hidden="true"><span class="rule"></span></div>
 
     <h3 class="hub-h3">Find Your Table &amp; Program</h3>
-    <p class="hub-sub">Already RSVP'd? Look yourself up to see your table number, check in, and the wedding program.</p>
-
-    <div class="ft-result" id="ftResult" hidden></div>
-
-    <div id="ftSearchCard">
-      <input type="text" id="ftNameInput" class="ft-input" placeholder="Type your name…" autocomplete="name" />
-      <button type="button" class="btn-lg" id="ftSearchBtn">Find My Table</button>
-      <div class="ft-msg" id="ftSearchMsg"></div>
-
-      <div class="ft-divider"><span>or</span></div>
-      <label class="btn-lg outline" for="ftQrUploadInput" id="ftQrUploadLabel">Upload Your QR Code Photo</label>
-      <input type="file" id="ftQrUploadInput" accept="image/*" style="display:none;" />
-      <div class="ft-msg" id="ftQrUploadMsg"></div>
-    </div>
+    <p class="hub-sub">Already RSVP'd? Look yourself up by name — or upload a photo of your QR code — to see your table number, check in, and the wedding program.</p>
+    <a class="btn-lg" href="/table">Find My Table</a>
 
     <div class="weave-divider" aria-hidden="true"><span class="rule"></span></div>
 
@@ -579,196 +530,6 @@
     }
   }).catch(function(){ /* keep it hidden on failure */ });
 
-  // ---------- Find Your Table (right here on the homepage — no separate
-  // page to hunt for). One name search or one QR photo shows the WHOLE
-  // party together: each person's table, their own Check In button, and
-  // a link to the full program. Kept deliberately simple: one input, one
-  // big button, one upload option — easy for every guest, tech-savvy or
-  // not, to use without any extra steps. ----------
-  (function(){
-    function esc(s){ return String(s == null ? '' : s).replace(/</g, '&lt;'); }
-    function fmtTable(t){
-      if (!t) return null;
-      return /^\d+$/.test(t) ? ('Table ' + t) : t;
-    }
-    function renderPartyMember(m){
-      var big = fmtTable(m.table);
-      var tableHtml = big
-        ? '<span class="ft-pm-table">' + esc(big) + '</span>'
-        : '<span class="ft-pm-table unassigned">No table yet</span>';
-      var checkinHtml = m.checkedIn
-        ? '<p class="ft-pm-checkin-status">&#10003; Checked in</p>'
-        : '<button type="button" class="ft-checkin-btn ft-pm-checkin-btn" data-id="' + esc(m.id) + '">Check In</button>' +
-          '<p class="ft-checkin-msg" data-msg-for="' + esc(m.id) + '"></p>';
-      return '<div class="ft-party-member">' +
-        '<div class="ft-pm-row"><span class="ft-pm-name">' + esc(m.name) + '</span>' + tableHtml + '</div>' +
-        checkinHtml +
-        '</div>';
-    }
-    var lastLookup = null; // { type: 'id'|'name', value }
-    function showResult(data){
-      var card = document.getElementById('ftResult');
-      var party = (data.party && data.party.length) ? data.party : [{ id: data.id, name: data.name, table: data.table, checkedIn: data.checkedIn }];
-      var heading = party.length > 1
-        ? '<p class="ft-greeting">Welcome! Here’s your party</p>'
-        : '<p class="ft-greeting">Welcome, ' + esc(data.name) + '!</p>';
-      card.innerHTML = heading + party.map(renderPartyMember).join('') +
-        '<p class="ft-more-link"><a href="/table">View the full wedding program &rarr;</a></p>';
-      card.hidden = false;
-      document.getElementById('ftSearchCard').hidden = true;
-    }
-    function refreshResult(){
-      if (!lastLookup) return;
-      var req = lastLookup.type === 'id'
-        ? fetch('/api/table/' + encodeURIComponent(lastLookup.value))
-        : fetch('/api/table?name=' + encodeURIComponent(lastLookup.value));
-      req.then(function(r){ return r.json(); }).then(function(data){ if (data.found) showResult(data); });
-    }
-    document.getElementById('ftResult').addEventListener('click', function(e){
-      var btn = e.target.closest('.ft-pm-checkin-btn');
-      if (!btn) return;
-      var id = btn.getAttribute('data-id');
-      btn.disabled = true; btn.textContent = 'Checking in…';
-      var msgEl = document.querySelector('.ft-checkin-msg[data-msg-for="' + id + '"]');
-      fetch('/api/checkin/' + encodeURIComponent(id), { method: 'POST' })
-        .then(function(r){ return r.json().then(function(data){ return { ok: r.ok, data: data }; }); })
-        .then(function(res){
-          if (res.ok && res.data.checkedIn){
-            refreshResult();
-          } else {
-            btn.disabled = false; btn.textContent = 'Check In';
-            if (msgEl) msgEl.textContent = (res.data && res.data.error) || 'Something went wrong — please try again.';
-          }
-        }).catch(function(){
-          btn.disabled = false; btn.textContent = 'Check In';
-          if (msgEl) msgEl.textContent = 'Network hiccup — please try again in a moment.';
-        });
-    });
-
-    function showNotFound(msg, candidates){
-      var msgEl = document.getElementById('ftSearchMsg');
-      msgEl.className = 'ft-msg error';
-      msgEl.textContent = msg;
-      var candWrap = document.getElementById('ftCandList');
-      if (candWrap) candWrap.remove();
-      if (candidates && candidates.length){
-        var wrap = document.createElement('div');
-        wrap.className = 'ft-candidates';
-        wrap.id = 'ftCandList';
-        wrap.innerHTML = '<p>Did you mean:</p>';
-        candidates.forEach(function(n){
-          var b = document.createElement('button');
-          b.type = 'button';
-          b.textContent = n;
-          b.addEventListener('click', function(){ lookupByName(n); });
-          wrap.appendChild(b);
-        });
-        msgEl.after(wrap);
-      }
-    }
-
-    function lookupByName(name){
-      var msgEl = document.getElementById('ftSearchMsg');
-      msgEl.className = 'ft-msg';
-      msgEl.textContent = 'Looking…';
-      var candWrap = document.getElementById('ftCandList');
-      if (candWrap) candWrap.remove();
-      fetch('/api/table?name=' + encodeURIComponent(name)).then(function(r){ return r.json(); }).then(function(data){
-        if (data.found){
-          msgEl.textContent = '';
-          lastLookup = { type: 'name', value: name };
-          showResult(data);
-        } else if (data.multiple && data.multiple.length){
-          showNotFound('A few guests match that name — please pick yours:', data.multiple);
-        } else {
-          showNotFound("We couldn't find that name on the guest list. Please check the spelling, or ask Annie or Jay.");
-        }
-      }).catch(function(){
-        msgEl.className = 'ft-msg error';
-        msgEl.textContent = 'Network hiccup — please try again in a moment.';
-      });
-    }
-
-    document.getElementById('ftSearchBtn').addEventListener('click', function(){
-      var name = document.getElementById('ftNameInput').value.trim();
-      if (!name) return;
-      lookupByName(name);
-    });
-    document.getElementById('ftNameInput').addEventListener('keydown', function(e){
-      if (e.key === 'Enter') document.getElementById('ftSearchBtn').click();
-    });
-
-    // ---------- Upload a saved QR code photo (instead of scanning it) ----------
-    // Decodes entirely in the guest's own browser — the image is never sent
-    // anywhere — then looks up that same party right here on the page.
-    function decodeQrFile(file){
-      var msgEl = document.getElementById('ftQrUploadMsg');
-      msgEl.className = 'ft-msg';
-      msgEl.textContent = 'Reading your QR code…';
-      var reader = new FileReader();
-      reader.onload = function(){
-        var img = new Image();
-        img.onload = function(){
-          var canvas = document.createElement('canvas');
-          canvas.width = img.naturalWidth;
-          canvas.height = img.naturalHeight;
-          var ctx = canvas.getContext('2d');
-          ctx.drawImage(img, 0, 0);
-          var imageData;
-          try { imageData = ctx.getImageData(0, 0, canvas.width, canvas.height); }
-          catch (e) {
-            msgEl.className = 'ft-msg error';
-            msgEl.textContent = "Couldn't read that image. Please try again, or type your name instead.";
-            return;
-          }
-          var code = (typeof jsQR === 'function') ? jsQR(imageData.data, imageData.width, imageData.height) : null;
-          if (!code || !code.data){
-            msgEl.className = 'ft-msg error';
-            msgEl.textContent = "We couldn't find a QR code in that photo. Please try a clearer image, or type your name instead.";
-            return;
-          }
-          var id;
-          try {
-            var parsed = new URL(code.data, location.href);
-            var m = /^\/table\/([^\/?#]+)/.exec(parsed.pathname);
-            id = m ? decodeURIComponent(m[1]) : null;
-          } catch (e) { id = null; }
-          if (!id){
-            msgEl.className = 'ft-msg error';
-            msgEl.textContent = "That doesn't look like one of our QR codes. Please try again, or type your name instead.";
-            return;
-          }
-          msgEl.textContent = 'Found it!';
-          fetch('/api/table/' + encodeURIComponent(id)).then(function(r){ return r.json(); }).then(function(data){
-            if (data.found){
-              lastLookup = { type: 'id', value: id };
-              showResult(data);
-            } else {
-              msgEl.className = 'ft-msg error';
-              msgEl.textContent = "That QR code didn't match anyone on the guest list. Please try again, or type your name instead.";
-            }
-          }).catch(function(){
-            msgEl.className = 'ft-msg error';
-            msgEl.textContent = 'Network hiccup — please try again in a moment.';
-          });
-        };
-        img.onerror = function(){
-          msgEl.className = 'ft-msg error';
-          msgEl.textContent = "That doesn't look like an image file. Please try again.";
-        };
-        img.src = reader.result;
-      };
-      reader.onerror = function(){
-        msgEl.className = 'ft-msg error';
-        msgEl.textContent = 'Could not open that file — please try again.';
-      };
-      reader.readAsDataURL(file);
-    }
-    document.getElementById('ftQrUploadInput').addEventListener('change', function(){
-      var file = this.files && this.files[0];
-      if (file) decodeQrFile(file);
-    });
-  })();
 </script>
 </body>
 </html>

@@ -87,16 +87,41 @@ function normName(n) {
 
 // The wedding day itself, in the venue's own timezone — guests can only
 // self check-in on this calendar date (Asia/Manila), regardless of what
-// timezone their phone thinks it's in.
+// timezone their phone thinks it's in. Also the anchor for the rest of the
+// site's lifecycle: photo uploads close a week later, and the whole guest
+// side of the site quietly retires into a read-only "memory" page a month
+// after that. All of these are calendar-date comparisons in Asia/Manila, not
+// the visitor's own device clock, so they land on the same real-world day
+// for every guest regardless of timezone.
 const WEDDING_DATE_MANILA = "2027-02-21";
-function isWeddingDayInManila() {
-  const todayManila = new Intl.DateTimeFormat("en-CA", {
+const PHOTO_UPLOAD_CUTOFF_MANILA = "2027-03-01"; // uploading new photos closes ON this date
+const SITE_LOCK_DATE_MANILA = "2027-03-21"; // Find My Table etc. close the day AFTER this date
+
+function todayInManila() {
+  return new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Manila",
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
   }).format(new Date());
-  return todayManila === WEDDING_DATE_MANILA;
+}
+function isWeddingDayInManila() {
+  return todayInManila() === WEDDING_DATE_MANILA;
+}
+function isPhotoUploadClosed() {
+  return todayInManila() >= PHOTO_UPLOAD_CUTOFF_MANILA;
+}
+function isSiteLocked() {
+  return todayInManila() > SITE_LOCK_DATE_MANILA;
+}
+// The RSVP deadline is admin-editable (a plain YYYY-MM-DD in site settings),
+// not hardcoded, since Annie may need to move it. Guests can still respond
+// through the deadline date itself; it closes starting the day after. With
+// no deadline set yet, RSVP just stays open.
+function isRsvpClosed(settings) {
+  const deadline = String((settings && settings.rsvpDeadline) || "").trim();
+  if (!deadline) return false;
+  return todayInManila() > deadline;
 }
 
 // Add or update one seating entry by name (case-insensitive match). This is
@@ -228,6 +253,10 @@ app.get("/jsQR.js", (req, res) => {
 
 // --- API ---------------------------------------------------------------
 app.post("/api/rsvp", (req, res) => {
+  if (isRsvpClosed(readSettingsObj())) {
+    return res.status(403).json({ error: "RSVP has closed. Thank you to everyone who responded — please reach out to Annie & Jay directly if anything's changed." });
+  }
+
   const body = req.body || {};
   const name = String(body.name || "").trim().slice(0, 80);
   const attending = body.attending === "yes" ? "yes" : body.attending === "no" ? "no" : null;
@@ -410,6 +439,7 @@ function getPartyFor(seatingEntry) {
 }
 
 app.get("/api/table", (req, res) => {
+  if (isSiteLocked()) return res.json({ found: false, locked: true });
   const { exact, candidates } = findSeatingMatches(req.query.name);
   if (exact) {
     return res.json({
@@ -450,6 +480,7 @@ app.get("/api/seating-names", (req, res) => {
 // (the primary RSVP respondent's) is enough for the whole party — the
 // response includes everyone in it via getPartyFor().
 app.get("/api/table/:id", (req, res) => {
+  if (isSiteLocked()) return res.json({ found: false, locked: true });
   const list = readSeating();
   const entry = list.find((s) => s.id === req.params.id);
   if (!entry) return res.status(404).json({ found: false });
@@ -736,6 +767,10 @@ function writeGuestPhotos(entries) { writeJson(GUEST_PHOTOS_FILE, entries); }
 ensureFile(GUEST_PHOTOS_FILE, "[]");
 
 app.post("/api/guest-photos", (req, res) => {
+  if (isPhotoUploadClosed()) {
+    return res.status(403).json({ error: "Photo uploads have closed. Thank you so much for sharing your memories with us!" });
+  }
+
   const body = req.body || {};
   if (!body.image) return res.status(400).json({ error: "Please choose a photo to upload." });
 
@@ -877,12 +912,23 @@ app.delete("/api/admin/program/:id", (req, res) => {
   res.json({ ok: true });
 });
 
-// --- Site settings (shared photo album link, etc.) --------------------------
+// --- Site settings (shared photo album link, RSVP deadline, etc.) ----------
 // A small key/value config Annie can edit from /admin without a code change
-// or redeploy. Public so the invitation page can show the album button.
+// or redeploy. Public so the invitation page can show the album button and
+// so every page can check the site's current lifecycle stage (open, RSVP
+// closed, uploads closed, fully locked into a read-only memory page) off one
+// server-computed source of truth, rather than trusting each visitor's own
+// device clock.
 app.get("/api/settings", (req, res) => {
   const settings = readSettingsObj();
-  res.json({ photoAlbumUrl: settings.photoAlbumUrl || null });
+  res.json({
+    photoAlbumUrl: settings.photoAlbumUrl || null,
+    rsvpDeadline: settings.rsvpDeadline || null,
+    rsvpClosed: isRsvpClosed(settings),
+    photoUploadClosed: isPhotoUploadClosed(),
+    siteLocked: isSiteLocked(),
+    weddingPassed: todayInManila() > WEDDING_DATE_MANILA,
+  });
 });
 
 app.post("/api/admin/settings", (req, res) => {
@@ -891,10 +937,15 @@ app.post("/api/admin/settings", (req, res) => {
   if (raw && !/^https?:\/\//i.test(raw)) {
     return res.status(400).json({ error: "Please enter a full link starting with https://" });
   }
+  const rawDeadline = String(body.rsvpDeadline || "").trim();
+  if (rawDeadline && !/^\d{4}-\d{2}-\d{2}$/.test(rawDeadline)) {
+    return res.status(400).json({ error: "Please pick a valid RSVP deadline date." });
+  }
   const settings = readSettingsObj();
   settings.photoAlbumUrl = raw || null;
+  settings.rsvpDeadline = rawDeadline || null;
   writeSettingsObj(settings);
-  res.json({ ok: true, photoAlbumUrl: settings.photoAlbumUrl });
+  res.json({ ok: true, photoAlbumUrl: settings.photoAlbumUrl, rsvpDeadline: settings.rsvpDeadline });
 });
 
 // Admin alias of /api/qr/:id (same QR, same no-auth model) — kept so

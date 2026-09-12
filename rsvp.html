@@ -206,7 +206,12 @@
   </div>
 
   <section class="card">
-    <p class="sub" style="margin-bottom:22px;">Kindly respond at your earliest so we can plan the celebration. <em>(RSVP deadline to be announced.)</em></p>
+    <p class="sub" style="margin-bottom:22px;" id="rsvpIntroText">Kindly respond at your earliest so we can plan the celebration. <em id="rsvpDeadlineNote">(RSVP deadline to be announced.)</em></p>
+
+    <div class="decline-result" id="rsvpClosedNotice" hidden style="margin-bottom:22px;">
+      <p class="decline-result-title">RSVP has closed</p>
+      <p class="decline-result-text">Thank you to everyone who responded — please reach out to Annie &amp; Jay directly if anything's changed.</p>
+    </div>
 
     <form id="rsvpForm" novalidate>
       <div class="field">
@@ -280,6 +285,24 @@
 </div>
 
 <script>
+  // ---------- RSVP deadline: shown as informational text while open, and
+  // swaps the whole form for a closed notice afterwards. Driven by the
+  // server's own clock (not this device's), so it lands on the same
+  // real-world day for every guest no matter their timezone. A bookmark or
+  // shared link to this page still respects the same rule, even though the
+  // homepage button would already be grayed out by then. ----------
+  fetch('/api/settings').then(function(r){ return r.json(); }).then(function(data){
+    if (data.rsvpDeadline && !data.rsvpClosed){
+      var d = new Date(data.rsvpDeadline + 'T00:00:00');
+      var niceDate = d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+      document.getElementById('rsvpDeadlineNote').textContent = '(Please respond by ' + niceDate + '.)';
+    }
+    if (data.rsvpClosed){
+      document.getElementById('rsvpForm').hidden = true;
+      document.getElementById('rsvpClosedNotice').hidden = false;
+    }
+  }).catch(function(){ /* leave the form open on failure, same as before this feature existed */ });
+
   // ---------- Name autocomplete (suggestions from the seating list) ----------
   (function(){
     var nameInput = document.getElementById('name');

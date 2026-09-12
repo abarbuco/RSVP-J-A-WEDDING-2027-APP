@@ -106,6 +106,11 @@
   <h1>Find Your Table</h1>
   <p class="sub">Annie &amp; Jay · #AJCloseTheGap</p>
 
+  <div class="card" id="lockedNotice" hidden>
+    <p class="greeting" style="margin-top:0;">This wedding has concluded</p>
+    <p class="hint">Thank you so much for celebrating with Annie &amp; Jay! Table lookups have closed, but the photos from the day are still there to view and download on the <a href="/">home page</a>.</p>
+  </div>
+
   <div class="card" id="resultCard" hidden></div>
 
   <div class="card searchcard" id="searchCard" hidden>
@@ -318,23 +323,35 @@
   });
 
   // ---------- Personal link: /table/<id> ----------
-  var parts = location.pathname.split('/').filter(Boolean);
-  var personalId = (parts[0] === 'table' && parts[1]) ? parts[1] : null;
+  // Checked against the server's own clock (not this device's), so it lands
+  // on the same real-world day for every guest regardless of timezone.
+  fetch('/api/settings').then(function(r){ return r.json(); }).then(function(settings){
+    if (settings.siteLocked){
+      document.getElementById('lockedNotice').hidden = false;
+      return;
+    }
+    runTableLookup();
+  }).catch(function(){ runTableLookup(); }); // if settings can't load, fail open rather than locking guests out
 
-  if (personalId){
-    fetch('/api/table/' + encodeURIComponent(personalId)).then(function(r){ return r.json(); }).then(function(data){
-      if (data.found){
-        lastLookup = { type: 'id', value: personalId };
-        showResult(data);
-      } else {
+  function runTableLookup(){
+    var parts = location.pathname.split('/').filter(Boolean);
+    var personalId = (parts[0] === 'table' && parts[1]) ? parts[1] : null;
+
+    if (personalId){
+      fetch('/api/table/' + encodeURIComponent(personalId)).then(function(r){ return r.json(); }).then(function(data){
+        if (data.found){
+          lastLookup = { type: 'id', value: personalId };
+          showResult(data);
+        } else {
+          document.getElementById('searchCard').hidden = false;
+          showNotFound("We couldn't match this QR code. Please type your name instead:");
+        }
+      }).catch(function(){
         document.getElementById('searchCard').hidden = false;
-        showNotFound("We couldn't match this QR code. Please type your name instead:");
-      }
-    }).catch(function(){
+      });
+    } else {
       document.getElementById('searchCard').hidden = false;
-    });
-  } else {
-    document.getElementById('searchCard').hidden = false;
+    }
   }
 
   // ---------- Program ----------

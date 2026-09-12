@@ -206,9 +206,28 @@
         <input type="checkbox" id="selectAllPhotosCb" /> Select all
       </label>
       <a id="downloadSelectedBtn" class="file-btn ghost" style="display:inline-block; text-decoration:none; opacity:.5; pointer-events:none;" href="#">Download Selected (0)</a>
+      <button type="button" id="removeSelectedBtn" class="danger" style="opacity:.5; pointer-events:none;">Remove Selected (0)</button>
       <span id="exportPhotosMsg"></span>
     </div>
     <div class="photo-grid" id="guestPhotosList"><p class="empty">Loading…</p></div>
+  </div>
+
+  <!-- ---------------- Site Timeline ---------------- -->
+  <div class="panel">
+    <h2>Site Timeline</h2>
+    <p class="desc">What guests can still do on the invitation site, and when it changes. All dates/times are Philippine time (Asia/Manila), the same for every guest no matter their own timezone.</p>
+    <div class="field">
+      <label for="rsvpDeadlineInput">RSVP deadline</label>
+      <input type="date" id="rsvpDeadlineInput" />
+    </div>
+    <p class="desc" style="margin-top:-6px;">Guests can RSVP through this date. The "RSVP Now" button turns off automatically starting the next day. Leave blank to keep RSVP open indefinitely.</p>
+    <button id="rsvpDeadlineSaveBtn">Save Deadline</button>
+    <div id="rsvpDeadlineMsg"></div>
+    <div class="weave-divider" aria-hidden="true" style="margin:18px 0; border-top:1px dashed var(--line);"></div>
+    <p class="desc" style="margin-top:0;"><strong>Automatic, built into the site (no action needed):</strong><br />
+      &bull; "Add Your Photo" turns off starting <strong>March 1, 2027</strong> — the live gallery and downloads keep working after that.<br />
+      &bull; The whole guest side of the site (Find My Table, RSVP, photo uploads) settles into a read-only "wedding memories" page starting <strong>March 22, 2027</strong> — news, the photo gallery, and downloads all stay available.
+    </p>
   </div>
 
   <!-- ---------------- Shared Photo Album ---------------- -->
@@ -556,6 +575,7 @@
   var exportPhotosMsg = document.getElementById('exportPhotosMsg');
   var selectAllPhotosCb = document.getElementById('selectAllPhotosCb');
   var downloadSelectedBtn = document.getElementById('downloadSelectedBtn');
+  var removeSelectedBtn = document.getElementById('removeSelectedBtn');
 
   function getSelectedPhotoIds(){
     return Array.prototype.slice.call(guestPhotosListEl.querySelectorAll('.photo-select:checked'))
@@ -565,14 +585,19 @@
   function updateBulkBar(){
     var ids = getSelectedPhotoIds();
     downloadSelectedBtn.textContent = 'Download Selected (' + ids.length + ')';
+    removeSelectedBtn.textContent = 'Remove Selected (' + ids.length + ')';
     if (ids.length){
       downloadSelectedBtn.href = '/api/admin/guest-photos/export?ids=' + ids.map(encodeURIComponent).join(',');
       downloadSelectedBtn.style.opacity = '1';
       downloadSelectedBtn.style.pointerEvents = 'auto';
+      removeSelectedBtn.style.opacity = '1';
+      removeSelectedBtn.style.pointerEvents = 'auto';
     } else {
       downloadSelectedBtn.href = '#';
       downloadSelectedBtn.style.opacity = '.5';
       downloadSelectedBtn.style.pointerEvents = 'none';
+      removeSelectedBtn.style.opacity = '.5';
+      removeSelectedBtn.style.pointerEvents = 'none';
     }
     var allCbs = guestPhotosListEl.querySelectorAll('.photo-select');
     selectAllPhotosCb.checked = allCbs.length > 0 && ids.length === allCbs.length;
@@ -623,27 +648,65 @@
     updateBulkBar();
   });
 
-  // ================= Shared Photo Album =================
+  removeSelectedBtn.addEventListener('click', function(){
+    var ids = getSelectedPhotoIds();
+    if (!ids.length) return;
+    if (!confirm('Remove ' + ids.length + ' selected photo' + (ids.length === 1 ? '' : 's') + '? This can\'t be undone.')) return;
+    removeSelectedBtn.disabled = true;
+    Promise.all(ids.map(function(id){
+      return fetch('/api/admin/guest-photos/' + id, { method: 'DELETE' });
+    })).then(function(){
+      removeSelectedBtn.disabled = false;
+      loadGuestPhotos();
+    }).catch(function(){
+      removeSelectedBtn.disabled = false;
+      exportPhotosMsg.textContent = 'Some photos could not be removed — please try again.';
+      loadGuestPhotos();
+    });
+  });
+
+  // ================= Site Timeline & Shared Photo Album =================
+  // Both panels save through the same /api/admin/settings endpoint, which
+  // replaces the whole settings object each time — so each Save button sends
+  // BOTH fields (its own plus whatever is currently showing in the other
+  // field) rather than just the one the guest edited, so saving one never
+  // silently blanks out the other.
   var photoAlbumInput = document.getElementById('photoAlbumUrl');
+  var rsvpDeadlineInput = document.getElementById('rsvpDeadlineInput');
+
   fetch('/api/settings').then(function(r){ return r.json(); }).then(function(data){
     photoAlbumInput.value = data.photoAlbumUrl || '';
-  }).catch(function(){ /* leave blank on failure */ });
+    rsvpDeadlineInput.value = data.rsvpDeadline || '';
+  }).catch(function(){ /* leave both blank on failure */ });
+
+  function saveSiteSettings(btn, msgEl, savingLabel, idleLabel, onSuccess){
+    btn.disabled = true; btn.textContent = savingLabel;
+    fetch('/api/admin/settings', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ photoAlbumUrl: photoAlbumInput.value.trim(), rsvpDeadline: rsvpDeadlineInput.value.trim() })
+    }).then(function(r){ return r.json(); }).then(function(data){
+      btn.disabled = false; btn.textContent = idleLabel;
+      if (!data.ok){ msgEl.innerHTML = '<p class="err">' + esc(data.error || 'Something went wrong.') + '</p>'; return; }
+      onSuccess(data);
+    }).catch(function(){
+      btn.disabled = false; btn.textContent = idleLabel;
+      msgEl.innerHTML = '<p class="err">Network hiccup — please try again.</p>';
+    });
+  }
 
   document.getElementById('photoAlbumSaveBtn').addEventListener('click', function(){
     var msgEl = document.getElementById('photoAlbumMsg');
     var btn = document.getElementById('photoAlbumSaveBtn');
-    var url = photoAlbumInput.value.trim();
-    btn.disabled = true; btn.textContent = 'Saving…';
-    fetch('/api/admin/settings', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ photoAlbumUrl: url })
-    }).then(function(r){ return r.json(); }).then(function(data){
-      btn.disabled = false; btn.textContent = 'Save Link';
-      if (!data.ok){ msgEl.innerHTML = '<p class="err">' + esc(data.error || 'Something went wrong.') + '</p>'; return; }
+    saveSiteSettings(btn, msgEl, 'Saving…', 'Save Link', function(data){
       msgEl.innerHTML = '<p class="ok">' + (data.photoAlbumUrl ? 'Saved — the button is now live on the invitation page.' : 'Saved — the button is now hidden.') + '</p>';
-    }).catch(function(){
-      btn.disabled = false; btn.textContent = 'Save Link';
-      msgEl.innerHTML = '<p class="err">Network hiccup — please try again.</p>';
+    });
+  });
+
+  document.getElementById('rsvpDeadlineSaveBtn').addEventListener('click', function(){
+    var msgEl = document.getElementById('rsvpDeadlineMsg');
+    var btn = document.getElementById('rsvpDeadlineSaveBtn');
+    saveSiteSettings(btn, msgEl, 'Saving…', 'Save Deadline', function(data){
+      msgEl.innerHTML = '<p class="ok">' + (data.rsvpDeadline ? 'Saved — RSVP closes the day after ' + data.rsvpDeadline + '.' : 'Saved — RSVP has no deadline and stays open.') + '</p>';
     });
   });
 

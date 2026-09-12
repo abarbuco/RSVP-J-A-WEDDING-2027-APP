@@ -39,6 +39,12 @@
     }
   }
   *{ box-sizing:border-box; }
+  /* Guarantees the plain HTML "hidden" attribute always actually hides an
+     element, even when some other rule elsewhere gives that same element an
+     explicit "display" (flex/grid/etc.) at equal specificity — without this,
+     whichever rule happens to come later in the stylesheet can silently win
+     and leave a "hidden" element visible. */
+  [hidden]{ display:none !important; }
   html{ scroll-behavior:smooth; }
   body{
     margin:0;
@@ -179,6 +185,26 @@
   }
   .countdown .tile .num{ font-family:'Cormorant Garamond', serif; font-size:1.7rem; font-weight:600; display:block; }
   .countdown .tile .unit{ font-size:.62rem; letter-spacing:.14em; text-transform:uppercase; opacity:.85; }
+  .thank-you-msg{ font-family:'Cormorant Garamond', serif; font-size:1.5rem; color:var(--ink); padding:0 10px; line-height:1.5; }
+
+  /* ---------- Closed/locked states ---------- */
+  .btn-lg.btn-disabled{
+    filter:grayscale(1) opacity(.55); cursor:default; pointer-events:none;
+  }
+  .closed-note{ text-align:center; font-size:.9rem; color:var(--ink-soft); margin-top:10px; line-height:1.5; }
+
+  /* ---------- Photo lightbox ---------- */
+  .photo-lightbox{
+    position:fixed; inset:0; background:rgba(20,15,10,.88); z-index:200;
+    display:flex; align-items:center; justify-content:center; padding:20px;
+  }
+  .photo-lightbox-inner{ max-width:min(640px, 100%); width:100%; text-align:center; }
+  .photo-lightbox-inner img{
+    max-width:100%; max-height:70vh; border-radius:8px; display:block; margin:0 auto; background:var(--ivory);
+  }
+  .photo-lightbox-actions{
+    display:flex; gap:12px; justify-content:center; flex-wrap:wrap; margin-top:16px;
+  }
 
   /* ---------- Section heading ---------- */
   .section{ padding:36px 30px; }
@@ -216,13 +242,11 @@
   .photo-gallery{
     display:grid; grid-template-columns:repeat(auto-fill, minmax(76px, 1fr)); gap:8px; margin-top:0;
   }
-  .photo-thumb{ position:relative; display:block; }
+  .photo-thumb{
+    position:relative; display:block; width:100%; padding:0; border:none; background:none; cursor:pointer; font:inherit;
+  }
   .photo-thumb img{
     width:100%; aspect-ratio:1/1; object-fit:cover; border-radius:6px; border:1px solid var(--line); background:var(--ivory); display:block;
-  }
-  .photo-dl{
-    position:absolute; right:4px; bottom:4px; width:24px; height:24px; border-radius:50%;
-    background:rgba(43,33,26,.72); color:#fff8ee; font-size:.95rem; line-height:24px; text-align:center;
   }
   .photo-gallery-empty{ color:var(--ink-soft); font-style:italic; font-size:.9rem; grid-column:1/-1; text-align:center; padding:6px 0; }
   .photo-gallery-nav{
@@ -381,13 +405,14 @@
   </div>
 
   <section class="card countdown-wrap reveal">
-    <p class="countdown-label">Until we close the gap</p>
+    <p class="countdown-label" id="countdownLabel">Until we close the gap</p>
     <div class="countdown" id="countdown" aria-live="polite">
       <div class="tile"><span class="num" id="cd-days">00</span><span class="unit">Days</span></div>
       <div class="tile"><span class="num" id="cd-hours">00</span><span class="unit">Hours</span></div>
       <div class="tile"><span class="num" id="cd-mins">00</span><span class="unit">Mins</span></div>
       <div class="tile"><span class="num" id="cd-secs">00</span><span class="unit">Secs</span></div>
     </div>
+    <p class="thank-you-msg" id="thankYouMsg" hidden>Thank you for celebrating with us! &#10084;<br />&mdash; Annie &amp; Jay</p>
   </section>
 
   <section class="card section reveal" id="updates">
@@ -403,12 +428,14 @@
       <div>
         <h3 class="hub-h3">Find Your Table &amp; Program</h3>
         <p class="hub-sub">Already RSVP'd? Look yourself up by name — or upload a photo of your QR code — to see your table number, check in, and the wedding program.</p>
-        <a class="btn-lg hub-action-btn" href="/table">Find My Table</a>
+        <p class="closed-note" id="findTableClosedNote" hidden>This wedding has concluded — thank you for celebrating with us! You can still browse and download photos in the gallery.</p>
+        <a class="btn-lg hub-action-btn" href="/table" id="findTableBtn">Find My Table</a>
       </div>
 
       <div>
         <h3 class="hub-h3">Share Your Photos</h3>
         <p class="hub-sub">Snapped something special? Add it here so everyone can see it right away.</p>
+        <p class="closed-note" id="addPhotoClosedNote" hidden>Photo uploads have closed — thank you so much for sharing your memories! You can still view and download every photo below.</p>
         <div class="photo-gallery" id="photoGallery"><p class="photo-gallery-empty">Loading…</p></div>
         <div class="photo-gallery-nav" id="photoGalleryNav" hidden>
           <button type="button" id="photoPrevBtn" aria-label="Previous photos">&larr;</button>
@@ -416,7 +443,7 @@
           <button type="button" id="photoNextBtn" aria-label="Next photos">&rarr;</button>
         </div>
         <p class="photo-album-link" id="photoAlbumWrap" hidden><a id="photoAlbumBtn" href="#" target="_blank" rel="noopener">View the full album &rarr;</a></p>
-        <label class="btn-lg hub-action-btn photo-upload-btn" for="guestPhotoInput">Add Your Photos</label>
+        <label class="btn-lg hub-action-btn photo-upload-btn" for="guestPhotoInput" id="addPhotoLabel">Add Your Photos</label>
         <input type="file" id="guestPhotoInput" accept="image/*" multiple style="display:none;" />
         <div class="photo-msg" id="guestPhotoMsg"></div>
       </div>
@@ -497,9 +524,10 @@
 
   <section class="card section reveal" id="rsvp">
     <h2>RSVP</h2>
-    <p class="sub">Kindly respond at your earliest so we can plan the celebration. <em>(RSVP deadline to be announced.)</em></p>
-    <a class="btn-lg" href="/rsvp">RSVP Now</a>
-    <p class="rsvp-cta-hint">Takes about a minute. You can add your whole party in one go.</p>
+    <p class="sub">Kindly respond at your earliest so we can plan the celebration. <em id="rsvpDeadlineNote">(RSVP deadline to be announced.)</em></p>
+    <a class="btn-lg" href="/rsvp" id="rsvpBtn">RSVP Now</a>
+    <p class="rsvp-cta-hint" id="rsvpCtaHint">Takes about a minute. You can add your whole party in one go.</p>
+    <p class="closed-note" id="rsvpClosedNote" hidden>RSVP has closed. Thank you to everyone who responded — please reach out to Annie &amp; Jay directly if anything's changed.</p>
   </section>
 
   <div class="trim footer-trim" aria-hidden="true"></div>
@@ -513,12 +541,35 @@
 
 </div>
 
+<div class="photo-lightbox" id="photoLightbox" hidden>
+  <div class="photo-lightbox-inner">
+    <img id="photoLightboxImg" src="" alt="" />
+    <div class="photo-lightbox-actions">
+      <a id="photoLightboxDownload" class="btn-lg" href="#" style="width:auto; display:inline-block; padding:12px 22px;">Download</a>
+      <button type="button" id="photoLightboxClose" class="btn-lg outline" style="width:auto; display:inline-block; padding:12px 22px;">Close</button>
+    </div>
+  </div>
+</div>
+
 <script>
   // ---------- Countdown ----------
+  // Once the wedding moment itself has passed, showing a countdown frozen at
+  // zero for the following weeks would look broken — so it's swapped for a
+  // simple thank-you note right away, rather than waiting for the site's
+  // later cutoff dates (uploads/full lock), which are about closing guest
+  // actions, not about whether the wedding is still ahead of us.
   var target = new Date("2027-02-21T16:00:00+08:00").getTime();
+  var countdownTimer = null;
   function tick(){
     var now = Date.now();
-    var diff = Math.max(0, target - now);
+    if (now >= target){
+      clearInterval(countdownTimer);
+      document.getElementById('countdown').hidden = true;
+      document.getElementById('countdownLabel').hidden = true;
+      document.getElementById('thankYouMsg').hidden = false;
+      return;
+    }
+    var diff = target - now;
     var s = Math.floor(diff/1000);
     var d = Math.floor(s/86400); s -= d*86400;
     var h = Math.floor(s/3600); s -= h*3600;
@@ -529,7 +580,7 @@
     document.getElementById('cd-secs').textContent = String(s).padStart(2,'0');
   }
   tick();
-  setInterval(tick, 1000);
+  countdownTimer = setInterval(tick, 1000);
 
   // ---------- Add to calendar ----------
   document.getElementById('calendarBtn').addEventListener('click', function(e){
@@ -574,13 +625,42 @@
   }
   loadUpdates();
 
-  // ---------- Shared Photo Album (optional full-album link, admin-set) ----------
+  // ---------- Site settings: shared album link, and the site's lifecycle
+  // (RSVP deadline, photo-upload cutoff, full lock into a read-only "memory"
+  // page) — all computed server-side off the real calendar date, not this
+  // visitor's own device clock, so it's consistent for every guest. ----------
   fetch('/api/settings').then(function(r){ return r.json(); }).then(function(data){
     if (data.photoAlbumUrl){
       document.getElementById('photoAlbumBtn').href = data.photoAlbumUrl;
       document.getElementById('photoAlbumWrap').hidden = false;
     }
-  }).catch(function(){ /* keep it hidden on failure */ });
+
+    if (data.rsvpDeadline && !data.rsvpClosed){
+      var d = new Date(data.rsvpDeadline + 'T00:00:00');
+      var niceDate = d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+      document.getElementById('rsvpDeadlineNote').textContent = '(Please respond by ' + niceDate + '.)';
+    }
+    if (data.rsvpClosed){
+      document.getElementById('rsvpBtn').classList.add('btn-disabled');
+      document.getElementById('rsvpBtn').setAttribute('aria-disabled', 'true');
+      document.getElementById('rsvpCtaHint').hidden = true;
+      document.getElementById('rsvpClosedNote').hidden = false;
+    }
+
+    if (data.photoUploadClosed){
+      document.getElementById('addPhotoLabel').classList.add('btn-disabled');
+      document.getElementById('addPhotoLabel').setAttribute('aria-disabled', 'true');
+      document.getElementById('guestPhotoInput').disabled = true;
+      document.getElementById('addPhotoClosedNote').hidden = false;
+    }
+
+    if (data.siteLocked){
+      document.getElementById('findTableBtn').classList.add('btn-disabled');
+      document.getElementById('findTableBtn').setAttribute('aria-disabled', 'true');
+      document.getElementById('findTableBtn').removeAttribute('href');
+      document.getElementById('findTableClosedNote').hidden = false;
+    }
+  }).catch(function(){ /* leave everything in its normal, open state on failure */ });
 
   // ---------- Share Your Photos: guests upload right here, and everyone
   // sees a live gallery of the latest photos — no waiting, no separate
@@ -607,10 +687,9 @@
     var pagePhotos = galleryPhotos.slice(start, start + PHOTOS_PER_PAGE);
 
     grid.innerHTML = pagePhotos.map(function(p){
-      return '<a class="photo-thumb" href="/api/guest-photos/' + p.id + '/download" title="Download this photo">' +
+      return '<button type="button" class="photo-thumb" data-id="' + p.id + '" title="View this photo">' +
         '<img src="' + p.imageUrl + '" alt="" loading="lazy" />' +
-        '<span class="photo-dl" aria-hidden="true">&#8595;</span>' +
-        '</a>';
+        '</button>';
     }).join('');
 
     if (galleryPhotos.length > PHOTOS_PER_PAGE){
@@ -630,6 +709,38 @@
   document.getElementById('photoNextBtn').addEventListener('click', function(){
     galleryPage++;
     renderPhotoGalleryPage();
+  });
+
+  // Tapping a thumbnail opens a full-size view with its own Download and
+  // Close controls, instead of downloading straight from the grid — clearer
+  // for guests who just want to look at a photo first.
+  var photoLightbox = document.getElementById('photoLightbox');
+  var photoLightboxImg = document.getElementById('photoLightboxImg');
+  var photoLightboxDownload = document.getElementById('photoLightboxDownload');
+
+  function openPhotoLightbox(photo){
+    photoLightboxImg.src = photo.imageUrl;
+    photoLightboxDownload.href = '/api/guest-photos/' + photo.id + '/download';
+    photoLightbox.hidden = false;
+  }
+  function closePhotoLightbox(){
+    photoLightbox.hidden = true;
+    photoLightboxImg.src = '';
+  }
+
+  document.getElementById('photoGallery').addEventListener('click', function(e){
+    var thumb = e.target.closest('.photo-thumb');
+    if (!thumb) return;
+    var id = thumb.getAttribute('data-id');
+    var photo = galleryPhotos.find(function(p){ return p.id === id; });
+    if (photo) openPhotoLightbox(photo);
+  });
+  document.getElementById('photoLightboxClose').addEventListener('click', closePhotoLightbox);
+  photoLightbox.addEventListener('click', function(e){
+    if (e.target === photoLightbox) closePhotoLightbox(); // click on the dark backdrop itself
+  });
+  document.addEventListener('keydown', function(e){
+    if (e.key === 'Escape' && !photoLightbox.hidden) closePhotoLightbox();
   });
 
   function loadPhotoGallery(resetToFirstPage){

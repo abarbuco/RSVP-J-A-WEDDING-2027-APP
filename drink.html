@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Drink Stall — Annie &amp; Jay</title>
+<meta name="description" content="Scan-to-redeem drink stall for Annie &amp; Jay's wedding, #AJCloseTheGap." />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%92%8D%3C/text%3E%3C/svg%3E" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600&family=Jost:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ivory:#f6efe2; --paper:#fffcf6; --ink:#2b211a; --ink-soft:#6b5c4e;
+    --rust:#7a4a2e; --olive:#556339; --gold-soft:#c99a4a; --line:rgba(43,33,26,.15);
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --ivory:#231a14; --paper:#2b2019; --ink:#f3e9d8; --ink-soft:#cdb9a2;
+      --rust:#d99a6c; --olive:#a3b37a; --gold-soft:#e6c467; --line:rgba(243,233,216,.16);
+    }
+  }
+  *{ box-sizing:border-box; }
+  body{
+    margin:0; background:var(--ivory); color:var(--ink);
+    font-family:'Jost', ui-sans-serif, system-ui, sans-serif;
+    padding:28px 18px 60px;
+  }
+  .wrap{ max-width:420px; margin:0 auto; }
+  h1{ font-family:'Cormorant Garamond', Georgia, serif; font-weight:600; font-size:1.8rem; margin:0 0 4px; text-align:center; }
+  .sub{ color:var(--ink-soft); font-size:1rem; margin:0 0 26px; text-align:center; }
+
+  .card{
+    background:var(--paper); border:1px solid var(--line); border-radius:14px;
+    padding:32px 26px; text-align:center;
+  }
+  .stall-icon{ font-size:2.6rem; margin-bottom:6px; }
+  .stall-label{
+    font-family:'Cormorant Garamond', Georgia, serif; font-weight:600; font-size:1.7rem;
+    color:var(--rust); margin:0 0 22px;
+  }
+  .guest-label{ font-size:.72rem; text-transform:uppercase; letter-spacing:.1em; color:var(--ink-soft); margin:0 0 4px; }
+  .guest-name{ font-family:'Cormorant Garamond', Georgia, serif; font-weight:600; font-size:1.6rem; margin:0 0 24px; }
+
+  .status{
+    display:inline-block; padding:8px 18px; border-radius:20px; font-size:.92rem; font-weight:600;
+    margin-bottom:22px;
+  }
+  .status.available{ background:var(--ivory); color:var(--olive); border:1px solid var(--olive); }
+  .status.used{ background:var(--ivory); color:var(--ink-soft); border:1px solid var(--line); }
+
+  .btn{
+    display:inline-block; width:100%; padding:15px; border-radius:8px; border:1px solid var(--olive);
+    background:var(--olive); color:#fff8ee; font-family:'Jost', sans-serif; font-size:1.05rem;
+    cursor:pointer;
+  }
+  .btn:disabled{ opacity:.55; cursor:default; }
+  .msg{ margin-top:16px; font-size:.95rem; color:var(--ink-soft); line-height:1.5; }
+  .msg.error{ color:var(--rust); }
+  .msg.success{ color:var(--olive); font-weight:600; }
+
+  .backlink{ display:block; text-align:center; margin-top:26px; color:var(--ink-soft); font-size:.9rem; }
+  .backlink a{ color:var(--rust); }
+
+  [hidden]{ display:none !important; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Drink Stall</h1>
+  <p class="sub">Annie &amp; Jay · #AJCloseTheGap</p>
+
+  <div class="card" id="loadingCard">
+    <p class="msg">Loading…</p>
+  </div>
+
+  <div class="card" id="notFoundCard" hidden>
+    <p class="msg error">We couldn't match this QR code. Please ask the guest to try their name at the front desk instead.</p>
+  </div>
+
+  <div class="card" id="mainCard" hidden>
+    <div class="stall-icon" id="stallIcon">🥤</div>
+    <p class="stall-label" id="stallLabel">Stall</p>
+
+    <p class="guest-label">Guest</p>
+    <p class="guest-name" id="guestName">—</p>
+
+    <div>
+      <span class="status" id="statusBadge">Available</span>
+    </div>
+
+    <button type="button" class="btn" id="redeemBtn">Confirm — Hand Over Drink</button>
+    <p class="msg" id="actionMsg"></p>
+  </div>
+
+  <p class="backlink"><a href="/">&larr; Back to the invitation</a></p>
+</div>
+
+<script>
+  var STALL_ICONS = { booze: '🍻', taho: '🍮', coffee: '☕', samalamig: '🧊' };
+
+  function esc(s){ return String(s == null ? '' : s).replace(/</g, '&lt;'); }
+
+  var parts = location.pathname.split('/').filter(Boolean);
+  // /drink/:id/:drink
+  var guestId = parts[1] || null;
+  var drinkKey = parts[2] || null;
+
+  var loadingCard = document.getElementById('loadingCard');
+  var notFoundCard = document.getElementById('notFoundCard');
+  var mainCard = document.getElementById('mainCard');
+  var redeemBtn = document.getElementById('redeemBtn');
+  var actionMsg = document.getElementById('actionMsg');
+  var statusBadge = document.getElementById('statusBadge');
+
+  function renderStatus(redeemed, redeemedAt){
+    if (redeemed){
+      statusBadge.className = 'status used';
+      statusBadge.textContent = 'Already redeemed';
+      redeemBtn.disabled = true;
+      redeemBtn.textContent = 'Already redeemed';
+    } else {
+      statusBadge.className = 'status available';
+      statusBadge.textContent = 'Available';
+      redeemBtn.disabled = false;
+      redeemBtn.textContent = 'Confirm — Hand Over Drink';
+    }
+  }
+
+  function showNotFound(){
+    loadingCard.hidden = true;
+    mainCard.hidden = true;
+    notFoundCard.hidden = false;
+  }
+
+  if (!guestId || !drinkKey){
+    showNotFound();
+  } else {
+    fetch('/api/drink/' + encodeURIComponent(guestId) + '/' + encodeURIComponent(drinkKey))
+      .then(function(r){ return r.json().then(function(data){ return { ok: r.ok, data: data }; }); })
+      .then(function(res){
+        if (!res.ok || !res.data.found){
+          showNotFound();
+          return;
+        }
+        var data = res.data;
+        loadingCard.hidden = true;
+        mainCard.hidden = false;
+        document.getElementById('stallIcon').textContent = STALL_ICONS[drinkKey] || '🥤';
+        document.getElementById('stallLabel').textContent = data.label + ' Stall';
+        document.getElementById('guestName').textContent = data.name;
+        renderStatus(data.redeemed, data.redeemedAt);
+      })
+      .catch(function(){ showNotFound(); });
+  }
+
+  redeemBtn.addEventListener('click', function(){
+    redeemBtn.disabled = true;
+    redeemBtn.textContent = 'Confirming…';
+    actionMsg.className = 'msg';
+    actionMsg.textContent = '';
+    fetch('/api/drink/' + encodeURIComponent(guestId) + '/' + encodeURIComponent(drinkKey) + '/redeem', { method: 'POST' })
+      .then(function(r){ return r.json().then(function(data){ return { ok: r.ok, data: data }; }); })
+      .then(function(res){
+        if (res.ok && res.data.redeemed){
+          renderStatus(true, res.data.redeemedAt);
+          if (res.data.alreadyRedeemed){
+            actionMsg.className = 'msg';
+            actionMsg.textContent = 'This one was already redeemed earlier — no drink was recorded twice.';
+          } else {
+            actionMsg.className = 'msg success';
+            actionMsg.textContent = '✓ Recorded — enjoy!';
+          }
+        } else {
+          redeemBtn.disabled = false;
+          redeemBtn.textContent = 'Confirm — Hand Over Drink';
+          actionMsg.className = 'msg error';
+          actionMsg.textContent = (res.data && res.data.error) || 'Something went wrong — please try again.';
+        }
+      })
+      .catch(function(){
+        redeemBtn.disabled = false;
+        redeemBtn.textContent = 'Confirm — Hand Over Drink';
+        actionMsg.className = 'msg error';
+        actionMsg.textContent = 'Network hiccup — please try again in a moment.';
+      });
+  });
+</script>
+</body>
+</html>

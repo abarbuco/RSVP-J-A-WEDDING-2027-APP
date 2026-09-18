@@ -124,6 +124,35 @@ function isRsvpClosed(settings) {
   return todayInManila() > deadline;
 }
 
+// The four drink stalls — each guest gets one QR per drink on their pass,
+// and each one can be redeemed (scanned by that stall's staff) exactly once,
+// like a tear-off coupon. Redemption state lives on the seating entry itself.
+const DRINK_TYPES = [
+  { key: "booze", label: "Booze" },
+  { key: "taho", label: "Taho" },
+  { key: "coffee", label: "Coffee" },
+  { key: "samalamig", label: "Samalamig" },
+];
+const DRINK_KEYS = DRINK_TYPES.map((d) => d.key);
+function drinkLabel(key) {
+  const found = DRINK_TYPES.find((d) => d.key === key);
+  return found ? found.label : key;
+}
+// Lazily fills in a { redeemed, redeemedAt } slot for each drink on a
+// seating entry so older entries (created before this feature existed)
+// behave exactly like brand-new ones — nothing to migrate.
+function ensureDrinks(entry) {
+  if (!entry.drinks || typeof entry.drinks !== "object" || Array.isArray(entry.drinks)) {
+    entry.drinks = {};
+  }
+  DRINK_KEYS.forEach((k) => {
+    if (!entry.drinks[k] || typeof entry.drinks[k] !== "object") {
+      entry.drinks[k] = { redeemed: false, redeemedAt: null };
+    }
+  });
+  return entry.drinks;
+}
+
 // Add or update one seating entry by name (case-insensitive match). This is
 // the ONLY way a name gets onto the guest list — via Excel upload or an
 // admin adding/editing a row here — never automatically from the public
@@ -380,6 +409,13 @@ app.get("/table/:id", (req, res) => {
   sendHtmlNoCache(res, "table.html");
 });
 
+// Where a drink stall's own scan lands — a guest's per-drink QR opens this
+// page on the STALL'S device (not the guest's), showing the guest's name and
+// a one-tap "confirm" for the person staffing that stall.
+app.get("/drink/:id/:drink", (req, res) => {
+  sendHtmlNoCache(res, "drink.html");
+});
+
 // Public: a guest's own personal QR code, e.g. shown right after they RSVP.
 app.get("/api/qr/:id", async (req, res) => {
   const list = readSeating();
@@ -393,6 +429,26 @@ app.get("/api/qr/:id", async (req, res) => {
     res.type("image/svg+xml").send(svg);
   } catch (err) {
     console.error("QR generation failed:", err);
+    res.status(500).send("Could not generate QR code.");
+  }
+});
+
+// One QR per drink stall, per guest — scanning it opens /drink/:id/:drink
+// for whoever is staffing that stall, so they can mark it redeemed.
+app.get("/api/qr/:id/:drink", async (req, res) => {
+  const drink = String(req.params.drink || "").toLowerCase();
+  if (!DRINK_KEYS.includes(drink)) return res.status(404).send("Unknown drink stall.");
+  const list = readSeating();
+  const entry = list.find((s) => s.id === req.params.id);
+  if (!entry) return res.status(404).send("Guest not found.");
+
+  const base = `${req.protocol}://${req.get("host")}`;
+  const url = `${base}/drink/${entry.id}/${drink}`;
+  try {
+    const svg = await generateQrSvg(url);
+    res.type("image/svg+xml").send(svg);
+  } catch (err) {
+    console.error("Drink QR generation failed:", err);
     res.status(500).send("Could not generate QR code.");
   }
 });
@@ -442,6 +498,7 @@ function getPartyFor(seatingEntry) {
       table: seat.table || null,
       checkedIn: !!seat.checkedIn,
       checkedInAt: seat.checkedInAt || null,
+      drinks: ensureDrinks(seat),
     });
   });
   return party;
@@ -458,6 +515,7 @@ app.get("/api/table", (req, res) => {
       table: exact.table || null,
       checkedIn: !!exact.checkedIn,
       checkedInAt: exact.checkedInAt || null,
+      drinks: ensureDrinks(exact),
       party: getPartyFor(exact),
     });
   }
@@ -500,8 +558,64 @@ app.get("/api/table/:id", (req, res) => {
     table: entry.table || null,
     checkedIn: !!entry.checkedIn,
     checkedInAt: entry.checkedInAt || null,
+    drinks: ensureDrinks(entry),
     party: getPartyFor(entry),
   });
+});
+
+// Status of one guest's one drink stall — used by the stall-scan page to
+// show whether this has already been redeemed before anyone taps confirm.
+app.get("/api/drink/:id/:drink", (req, res) => {
+  const drink = String(req.params.drink || "").toLowerCase();
+  if (!DRINK_KEYS.includes(drink)) return res.status(404).json({ found: false, error: "Unknown drink stall." });
+  const list = readSeating();
+  const entry = list.find((s) => s.id === req.params.id);
+  if (!entry) return res.status(404).json({ found: false });
+  const drinks = ensureDrinks(entry);
+  res.json({
+    found: true,
+    id: entry.id,
+    name: entry.name,
+    drink,
+    label: drinkLabel(drink),
+    redeemed: !!drinks[drink].redeemed,
+    redeemedAt: drinks[drink].redeemedAt || null,
+  });
+});
+
+// Redeem one guest's one drink — tapped by whoever is staffing that stall
+// after they scan the guest's QR. Each drink can only be redeemed once;
+// redeeming it again just reports it was already used, it doesn't error.
+// Gated to the wedding day itself, same as self check-in.
+app.post("/api/drink/:id/:drink/redeem", (req, res) => {
+  const drink = String(req.params.drink || "").toLowerCase();
+  if (!DRINK_KEYS.includes(drink)) return res.status(404).json({ error: "Unknown drink stall." });
+  if (!isWeddingDayInManila()) {
+    return res.status(403).json({
+      error: "Drink redemption opens on the day of the wedding — February 21, 2027.",
+      redeemed: false,
+    });
+  }
+  const list = readSeating();
+  const entry = list.find((s) => s.id === req.params.id);
+  if (!entry) return res.status(404).json({ error: "Guest not found.", redeemed: false });
+
+  const drinks = ensureDrinks(entry);
+  const label = drinkLabel(drink);
+  if (drinks[drink].redeemed) {
+    return res.json({
+      ok: true,
+      alreadyRedeemed: true,
+      redeemed: true,
+      redeemedAt: drinks[drink].redeemedAt,
+      name: entry.name,
+      label,
+    });
+  }
+  drinks[drink].redeemed = true;
+  drinks[drink].redeemedAt = new Date().toISOString();
+  writeSeating(list);
+  res.json({ ok: true, redeemed: true, redeemedAt: drinks[drink].redeemedAt, name: entry.name, label });
 });
 
 // Self check-in: a guest taps this after scanning their QR code (or finding

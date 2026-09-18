@@ -162,6 +162,33 @@
   .bp-checkin-status{ margin:0; font-size:.95rem; font-weight:600; color:var(--olive); white-space:nowrap; }
   .bp-checkin-btn{ display:inline-block; width:auto; margin-top:0; padding:10px 20px; font-size:.92rem; }
   .bp-stub-status .checkin-msg{ margin-top:8px; font-size:.82rem; max-width:180px; margin-left:auto; }
+
+  /* ---------- Drink-stall coupons ---------- */
+  .bp-drinks{ padding:16px 20px 20px; }
+  .bp-drinks-label{
+    font-size:.66rem; text-transform:uppercase; letter-spacing:.1em; color:var(--ink-soft);
+    margin:0 0 14px; text-align:center;
+  }
+  .bp-drinks-grid{ display:flex; gap:10px; justify-content:space-between; }
+  .bp-drink{ flex:1 1 0; min-width:0; display:flex; flex-direction:column; align-items:center; gap:6px; }
+  .bp-drink-qr{
+    position:relative; width:58px; height:58px; border-radius:50%;
+    background:#fffcf6; border:2px solid var(--olive);
+    display:flex; align-items:center; justify-content:center;
+    transform:rotate(-6deg);
+    box-shadow:0 2px 4px rgba(43,33,26,.14);
+  }
+  .bp-drink-qr::after{
+    content:''; position:absolute; inset:-4px; border-radius:50%;
+    border:1.2px dashed var(--olive); opacity:.55;
+  }
+  .bp-drink-qr img{ display:block; width:36px; height:36px; border-radius:2px; transform:rotate(6deg); }
+  .bp-drink-check{ font-size:1.4rem; font-weight:700; color:var(--olive); transform:rotate(6deg); }
+  .bp-drink-name{ font-size:.74rem; font-weight:600; color:var(--ink); text-align:center; white-space:nowrap; }
+  .bp-drink-status{ font-size:.62rem; color:var(--ink-soft); text-align:center; }
+  .bp-drink.redeemed .bp-drink-qr{ border-color:var(--line); box-shadow:none; }
+  .bp-drink.redeemed .bp-drink-qr::after{ border-color:var(--line); }
+  .bp-drink.redeemed .bp-drink-status{ color:var(--olive); font-weight:600; }
 </style>
 <script src="/jsQR.js"></script>
 </head>
@@ -200,9 +227,32 @@
 <script>
   function esc(s){ return String(s == null ? '' : s).replace(/</g, '&lt;'); }
 
+  // Four drink-stall coupons per guest, each a one-time-use QR the stall
+  // itself scans (not the guest) to mark it redeemed. Keep this list in
+  // sync with DRINK_TYPES in server.js.
+  var DRINK_TYPES = [
+    { key: 'booze', label: 'Booze', icon: '\u{1F37B}' },
+    { key: 'taho', label: 'Taho', icon: '\u{1F963}' },
+    { key: 'coffee', label: 'Coffee', icon: '☕' },
+    { key: 'samalamig', label: 'Samalamig', icon: '\u{1F9CA}' }
+  ];
+
+  function renderDrink(m, d){
+    var st = (m.drinks && m.drinks[d.key]) || {};
+    var used = !!st.redeemed;
+    var qrOrCheck = used
+      ? '<span class="bp-drink-check">&#10003;</span>'
+      : '<img src="/api/qr/' + esc(m.id) + '/' + d.key + '" alt="QR code — scan at the ' + esc(d.label) + ' stall to redeem for ' + esc(m.name) + '" width="36" height="36" />';
+    return '<div class="bp-drink' + (used ? ' redeemed' : '') + '">' +
+      '<div class="bp-drink-qr">' + qrOrCheck + '</div>' +
+      '<span class="bp-drink-name">' + d.icon + ' ' + esc(d.label) + '</span>' +
+      '<span class="bp-drink-status">' + (used ? 'Redeemed' : 'Scan at stall') + '</span>' +
+    '</div>';
+  }
+
   // One QR code (or one name search) shows the WHOLE party together — the
   // person plus anyone they named as additional guests on their RSVP —
-  // each with their own boarding pass and their own Check In control.
+  // each with their own boarding pass, Check In control, and drink coupons.
   function renderPartyMember(m){
     var hasTable = !!m.table;
     var tableHtml = hasTable
@@ -210,8 +260,9 @@
       : '<span class="bp-value">TBA</span>';
     var checkinHtml = m.checkedIn
       ? '<p class="bp-checkin-status">&#10003; Boarded</p>'
-      : '<button type="button" class="checkin-btn bp-checkin-btn" data-id="' + esc(m.id) + '">Check In</button>' +
+      : '<button type="button" class="checkin-btn pm-checkin-btn bp-checkin-btn" data-id="' + esc(m.id) + '">Check In</button>' +
         '<p class="checkin-msg" data-msg-for="' + esc(m.id) + '"></p>';
+    var drinksHtml = DRINK_TYPES.map(function(d){ return renderDrink(m, d); }).join('');
     return '<div class="boarding-pass">' +
       '<div class="bp-strip">' +
         '<div class="bp-airline"><span class="bp-plane">&#9992;&#65039;</span><span>AJ Wedding Express</span></div>' +
@@ -231,13 +282,18 @@
         '<div class="bp-qr"><img src="/api/qr/' + esc(m.id) + '" alt="QR code — scan to find ' + esc(m.name) + '\'s table" width="54" height="54" /></div>' +
         '<div class="bp-stub-status">' + checkinHtml + '</div>' +
       '</div>' +
+      '<div class="bp-perforation"></div>' +
+      '<div class="bp-drinks">' +
+        '<p class="bp-drinks-label">Drink stalls — one scan each</p>' +
+        '<div class="bp-drinks-grid">' + drinksHtml + '</div>' +
+      '</div>' +
     '</div>';
   }
 
   function showResult(data){
     var card = document.getElementById('resultCard');
     card.classList.add('boarding-mode');
-    var party = (data.party && data.party.length) ? data.party : [{ id: data.id, name: data.name, table: data.table, checkedIn: data.checkedIn }];
+    var party = (data.party && data.party.length) ? data.party : [{ id: data.id, name: data.name, table: data.table, checkedIn: data.checkedIn, drinks: data.drinks }];
     var heading = party.length > 1
       ? '<p class="greeting bp-heading">Welcome! Here are your boarding passes</p>'
       : '<p class="greeting bp-heading">Welcome, ' + esc(data.name) + '!</p>';

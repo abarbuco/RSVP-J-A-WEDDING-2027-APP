@@ -98,6 +98,70 @@
   }
   .checkin-btn:disabled{ opacity:.6; }
   .checkin-msg{ margin-top:10px; font-size:.9rem; color:var(--ink-soft); line-height:1.5; }
+
+  /* ---------- Boarding pass result ---------- */
+  #resultCard.boarding-mode{ background:transparent; border:0; padding:0; text-align:left; }
+  .bp-heading{
+    text-align:center; font-family:'Cormorant Garamond', Georgia, serif; font-weight:600;
+    font-size:1.3rem; margin:0 0 18px;
+  }
+  .party-list{ gap:22px; }
+
+  .boarding-pass{
+    position:relative;
+    background:var(--paper);
+    border:1px solid var(--line);
+    border-radius:14px;
+    overflow:hidden;
+    box-shadow:0 8px 20px rgba(43,33,26,.1);
+  }
+  .bp-strip{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    background:linear-gradient(120deg, var(--rust), var(--gold-soft));
+    color:#fff8ee; padding:12px 18px;
+  }
+  .bp-airline{ display:flex; align-items:center; gap:8px; font-weight:600; letter-spacing:.02em; font-size:1.02rem; }
+  .bp-plane{ display:inline-block; font-size:1.15rem; transform:rotate(45deg); }
+  .bp-flightno{ font-size:.72rem; text-transform:uppercase; letter-spacing:.1em; opacity:.92; white-space:nowrap; }
+
+  .bp-main{ display:flex; justify-content:space-between; align-items:flex-start; gap:14px; padding:18px 20px 4px; }
+  .bp-field{ display:flex; flex-direction:column; gap:5px; min-width:0; }
+  .bp-label{ font-size:.66rem; text-transform:uppercase; letter-spacing:.1em; color:var(--ink-soft); }
+  .bp-value{ font-family:'Cormorant Garamond', Georgia, serif; font-weight:600; font-size:1.25rem; color:var(--ink); overflow-wrap:break-word; }
+  .bp-passenger{ flex:1 1 auto; }
+  .bp-table{ align-items:flex-end; text-align:right; flex:0 0 auto; }
+  .bp-table .bp-value{ color:var(--rust); font-size:1.7rem; white-space:nowrap; }
+  .bp-table.unassigned .bp-value{ font-family:'Jost', sans-serif; font-weight:400; font-size:.9rem; color:var(--ink-soft); }
+
+  .bp-row2{ display:flex; gap:16px; padding:10px 20px 18px; flex-wrap:wrap; border-bottom:1px solid var(--line); }
+  .bp-row2 .bp-field{ flex:1 1 auto; min-width:84px; gap:3px; }
+  .bp-row2 .bp-value{ font-family:'Jost', sans-serif; font-weight:600; font-size:.92rem; color:var(--ink); }
+
+  .bp-perforation{ position:relative; height:0; border-top:2px dashed var(--line); }
+  .bp-perforation::before, .bp-perforation::after{
+    content:''; position:absolute; top:50%; transform:translateY(-50%);
+    width:22px; height:22px; border-radius:50%; background:var(--ivory);
+  }
+  .bp-perforation::before{ left:-11px; }
+  .bp-perforation::after{ right:-11px; }
+
+  .bp-stub{ display:flex; align-items:center; gap:18px; padding:18px 20px; }
+  .bp-qr{
+    flex:0 0 auto; position:relative; width:86px; height:86px; border-radius:50%;
+    background:#fffcf6; border:2px solid var(--rust);
+    display:flex; align-items:center; justify-content:center;
+    transform:rotate(-8deg);
+    box-shadow:0 2px 5px rgba(43,33,26,.18);
+  }
+  .bp-qr::after{
+    content:''; position:absolute; inset:-6px; border-radius:50%;
+    border:1.5px dashed var(--rust); opacity:.55;
+  }
+  .bp-qr img{ display:block; width:54px; height:54px; border-radius:3px; transform:rotate(8deg); }
+  .bp-stub-status{ flex:1 1 auto; text-align:right; }
+  .bp-checkin-status{ margin:0; font-size:.95rem; font-weight:600; color:var(--olive); white-space:nowrap; }
+  .bp-checkin-btn{ display:inline-block; width:auto; margin-top:0; padding:10px 20px; font-size:.92rem; }
+  .bp-stub-status .checkin-msg{ margin-top:8px; font-size:.82rem; max-width:180px; margin-left:auto; }
 </style>
 <script src="/jsQR.js"></script>
 </head>
@@ -136,35 +200,47 @@
 <script>
   function esc(s){ return String(s == null ? '' : s).replace(/</g, '&lt;'); }
 
-  function fmtTable(t){
-    if (!t) return null;
-    return /^\d+$/.test(t) ? ('Table ' + t) : t;
-  }
-
   // One QR code (or one name search) shows the WHOLE party together — the
   // person plus anyone they named as additional guests on their RSVP —
-  // each with their own table number and their own Check In control.
+  // each with their own boarding pass and their own Check In control.
   function renderPartyMember(m){
-    var big = fmtTable(m.table);
-    var tableHtml = big
-      ? '<span class="pm-table">' + esc(big) + '</span>'
-      : '<span class="pm-table unassigned">No table yet</span>';
+    var hasTable = !!m.table;
+    var tableHtml = hasTable
+      ? '<span class="bp-value">' + esc(m.table) + '</span>'
+      : '<span class="bp-value">TBA</span>';
     var checkinHtml = m.checkedIn
-      ? '<p class="pm-checkin-status">&#10003; Checked in</p>'
-      : '<button type="button" class="checkin-btn pm-checkin-btn" data-id="' + esc(m.id) + '">Check In</button>' +
+      ? '<p class="bp-checkin-status">&#10003; Boarded</p>'
+      : '<button type="button" class="checkin-btn bp-checkin-btn" data-id="' + esc(m.id) + '">Check In</button>' +
         '<p class="checkin-msg" data-msg-for="' + esc(m.id) + '"></p>';
-    return '<div class="party-member">' +
-      '<div class="pm-row"><span class="pm-name">' + esc(m.name) + '</span>' + tableHtml + '</div>' +
-      checkinHtml +
-      '</div>';
+    return '<div class="boarding-pass">' +
+      '<div class="bp-strip">' +
+        '<div class="bp-airline"><span class="bp-plane">&#9992;&#65039;</span><span>AJ Wedding Express</span></div>' +
+        '<div class="bp-flightno">Flt AJ&#8209;0221</div>' +
+      '</div>' +
+      '<div class="bp-main">' +
+        '<div class="bp-field bp-passenger"><span class="bp-label">Passenger</span><span class="bp-value">' + esc(m.name) + '</span></div>' +
+        '<div class="bp-field bp-table' + (hasTable ? '' : ' unassigned') + '"><span class="bp-label">Table</span>' + tableHtml + '</div>' +
+      '</div>' +
+      '<div class="bp-row2">' +
+        '<div class="bp-field"><span class="bp-label">Date</span><span class="bp-value">21 Feb 2027</span></div>' +
+        '<div class="bp-field"><span class="bp-label">Time</span><span class="bp-value">4:00 PM</span></div>' +
+        '<div class="bp-field"><span class="bp-label">Venue</span><span class="bp-value">Plaza Ibarra</span></div>' +
+      '</div>' +
+      '<div class="bp-perforation"></div>' +
+      '<div class="bp-stub">' +
+        '<div class="bp-qr"><img src="/api/qr/' + esc(m.id) + '" alt="QR code — scan to find ' + esc(m.name) + '\'s table" width="54" height="54" /></div>' +
+        '<div class="bp-stub-status">' + checkinHtml + '</div>' +
+      '</div>' +
+    '</div>';
   }
 
   function showResult(data){
     var card = document.getElementById('resultCard');
+    card.classList.add('boarding-mode');
     var party = (data.party && data.party.length) ? data.party : [{ id: data.id, name: data.name, table: data.table, checkedIn: data.checkedIn }];
     var heading = party.length > 1
-      ? '<p class="greeting">Welcome! Here\'s your party</p>'
-      : '<p class="greeting">Welcome, ' + esc(data.name) + '!</p>';
+      ? '<p class="greeting bp-heading">Welcome! Here are your boarding passes</p>'
+      : '<p class="greeting bp-heading">Welcome, ' + esc(data.name) + '!</p>';
     card.innerHTML = heading + '<div class="party-list">' + party.map(renderPartyMember).join('') + '</div>';
     card.hidden = false;
   }

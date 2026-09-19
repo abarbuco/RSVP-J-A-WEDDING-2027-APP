@@ -337,6 +337,14 @@
   .attire-icons{ display:flex; gap:22px; margin:12px 0 16px; }
   .attire-icons figure{ margin:0; text-align:center; }
   .attire-icons figcaption{ margin-top:4px; font-size:.68rem; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-soft); }
+
+  .palette-swatches{ display:flex; gap:16px; margin:16px 0 4px; flex-wrap:wrap; }
+  .palette-swatch{ margin:0; text-align:center; }
+  .palette-swatch .chip{
+    display:block; width:38px; height:38px; border-radius:50%;
+    border:1px solid var(--line); box-shadow:0 2px 5px rgba(43,33,26,.15);
+  }
+  .palette-swatch figcaption{ margin-top:6px; font-size:.68rem; letter-spacing:.04em; color:var(--ink-soft); }
   .adults-note{
     margin:22px 0 0; padding:14px 18px; text-align:center; font-size:.88rem; line-height:1.6;
     color:var(--ink-soft); font-style:italic; border-top:1px solid var(--line);
@@ -526,7 +534,14 @@
             <figcaption>Filipiniana</figcaption>
           </figure>
         </div>
-        <p>Barong or Filipiniana, any color you like — our palette is just inspiration, not a rule. Just please save white for the bride.</p>
+        <p>Barong or Filipiniana, any color you like — our olive-and-earth palette below is just inspiration, not a rule. Just please save white for the bride.</p>
+        <div class="palette-swatches" aria-hidden="true">
+          <figure class="palette-swatch"><span class="chip" style="background:#556339"></span><figcaption>Olive</figcaption></figure>
+          <figure class="palette-swatch"><span class="chip" style="background:#7a4a2e"></span><figcaption>Rust</figcaption></figure>
+          <figure class="palette-swatch"><span class="chip" style="background:#5c351f"></span><figcaption>Deep Brown</figcaption></figure>
+          <figure class="palette-swatch"><span class="chip" style="background:#c99a4a"></span><figcaption>Gold</figcaption></figure>
+          <figure class="palette-swatch"><span class="chip" style="background:#f6efe2"></span><figcaption>Ivory</figcaption></figure>
+        </div>
       </div>
     </div>
     <p class="adults-note">This is an adults-only celebration. Thanks for understanding — enjoy the date night!</p>

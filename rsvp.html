@@ -136,13 +136,19 @@
   }
   .radio-row input{ accent-color:var(--rust); width:20px; height:20px; }
   .radio-row label.active{ border-color:var(--rust); background:rgba(122,74,46,.08); }
-  #guestCountField{ display:none; }
-  #partyNamesField[hidden]{ display:none; }
-  .party-name-input{
-    width:100%; font-family:inherit; font-size:1.05rem; padding:13px 14px;
-    border:1px solid var(--line); border-radius:8px; background:var(--paper); color:var(--ink);
-    margin-bottom:8px;
+  #partyField[hidden]{ display:none; }
+  .party-chips{ display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }
+  .party-chip{
+    display:inline-flex; align-items:center; gap:8px;
+    padding:7px 8px 7px 14px; border-radius:999px; background:var(--ivory); border:1px solid var(--line);
+    font-size:.92rem; color:var(--ink);
   }
+  .party-chip button{
+    width:20px; height:20px; line-height:18px; text-align:center; padding:0;
+    border-radius:50%; border:1px solid var(--line); background:var(--paper); color:var(--rust-deep);
+    font-size:.85rem; cursor:pointer;
+  }
+  .party-chip button:hover{ background:rgba(122,74,46,.12); }
 
   .btn-lg{
     display:block; width:100%; text-align:center; box-sizing:border-box;
@@ -232,21 +238,14 @@
         </div>
       </div>
 
-      <div class="field" id="guestCountField">
-        <label for="guests">Number of guests (including you)</label>
-        <select id="guests" name="guests">
-          <option value="1">Just me</option>
-          <option value="2">2</option>
-          <option value="3">3</option>
-          <option value="4">4</option>
-          <option value="5">5</option>
-        </select>
-      </div>
-
-      <div class="field" id="partyNamesField" hidden>
-        <label>Names of your additional guests</label>
-        <div id="partyNamesList"></div>
-        <p class="field-hint">This helps us prepare seating and QR codes for your whole party.</p>
+      <div class="field" id="partyField" hidden>
+        <label for="partySearch">Bringing family or others with you?</label>
+        <div class="name-autocomplete">
+          <input type="text" id="partySearch" placeholder="Search a name from the guest list to add…" autocomplete="off" />
+          <div class="name-suggestions party-suggestions" id="partySuggestions" hidden></div>
+        </div>
+        <div id="partyChips" class="party-chips"></div>
+        <p class="field-hint" id="partyCountHint">Just you so far — search above to add anyone else, no limit.</p>
       </div>
 
       <div class="field">
@@ -399,37 +398,98 @@
   }
 
   // ---------- Attending toggle ----------
-  var guestCountField = document.getElementById('guestCountField');
   var labelYes = document.getElementById('labelYes');
   var labelNo = document.getElementById('labelNo');
-  var guestsSelect = document.getElementById('guests');
-  var partyNamesField = document.getElementById('partyNamesField');
-  var partyNamesList = document.getElementById('partyNamesList');
+  var partyField = document.getElementById('partyField');
+  var partySearch = document.getElementById('partySearch');
+  var partySuggestions = document.getElementById('partySuggestions');
+  var partyChipsEl = document.getElementById('partyChips');
+  var partyCountHint = document.getElementById('partyCountHint');
   var nameLookupMsg = document.getElementById('nameLookupMsg');
 
-  // Only names already on Annie & Jay's guest list may RSVP. Looking a name
-  // up also tells us how many guests that invitation is allowed to bring,
-  // which caps the "Number of guests" dropdown below.
-  var currentMaxGuests = 1;
+  // Only names already on Annie & Jay's guest list may RSVP. One person can
+  // register their whole family (or anyone else on the list) in the same
+  // RSVP — there's no cap on how many names they add here; every name
+  // still has to match someone already on the guest list.
   var lastLookedUpName = '';
+  var partyNames = []; // additional guests added by the person filling this out
 
-  function rebuildGuestsSelect(max){
-    var previous = guestsSelect.value;
-    var html = '<option value="1">Just me</option>';
-    for (var i = 2; i <= max; i++){
-      html += '<option value="' + i + '">' + i + '</option>';
+  function renderPartyChips(){
+    partyChipsEl.innerHTML = '';
+    if (!partyNames.length){
+      partyCountHint.textContent = 'Just you so far — search above to add anyone else, no limit.';
+      return;
     }
-    guestsSelect.innerHTML = html;
-    guestsSelect.value = (parseInt(previous, 10) <= max) ? previous : '1';
+    partyNames.forEach(function(n, i){
+      var chip = document.createElement('span');
+      chip.className = 'party-chip';
+      chip.appendChild(document.createTextNode(n));
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.setAttribute('data-i', i);
+      btn.setAttribute('aria-label', 'Remove ' + n);
+      btn.innerHTML = '&times;';
+      chip.appendChild(btn);
+      partyChipsEl.appendChild(chip);
+    });
+    partyCountHint.textContent = 'Registering ' + (partyNames.length + 1) + ' guests total (you + ' + partyNames.length + ').';
   }
+  partyChipsEl.addEventListener('click', function(e){
+    var btn = e.target.closest('button');
+    if (!btn) return;
+    partyNames.splice(parseInt(btn.getAttribute('data-i'), 10), 1);
+    renderPartyChips();
+  });
+
+  function addPartyName(n){
+    var name = String(n || '').trim();
+    if (!name) return;
+    var key = name.toLowerCase();
+    var primary = document.getElementById('name').value.trim().toLowerCase();
+    if (key === primary) return; // can't add yourself
+    if (partyNames.some(function(p){ return p.toLowerCase() === key; })) return; // no dupes
+    partyNames.push(name);
+    partySearch.value = '';
+    partySuggestions.hidden = true;
+    renderPartyChips();
+  }
+
+  (function(){
+    var debounceTimer = null;
+    function hideBox(){ partySuggestions.hidden = true; partySuggestions.innerHTML = ''; }
+    function showNames(names){
+      if (!names.length){ hideBox(); return; }
+      partySuggestions.innerHTML = '';
+      names.forEach(function(n){
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.textContent = n;
+        btn.addEventListener('click', function(){ addPartyName(n); });
+        partySuggestions.appendChild(btn);
+      });
+      partySuggestions.hidden = false;
+    }
+    partySearch.addEventListener('input', function(){
+      var q = partySearch.value.trim();
+      clearTimeout(debounceTimer);
+      if (q.length < 2){ hideBox(); return; }
+      debounceTimer = setTimeout(function(){
+        fetch('/api/seating-names?q=' + encodeURIComponent(q))
+          .then(function(r){ return r.json(); })
+          .then(function(data){ showNames(data.names || []); })
+          .catch(function(){ hideBox(); });
+      }, 150);
+    });
+    partySearch.addEventListener('keydown', function(e){
+      if (e.key === 'Enter'){ e.preventDefault(); if (partySearch.value.trim()) addPartyName(partySearch.value); }
+    });
+    partySearch.addEventListener('blur', function(){ setTimeout(hideBox, 150); });
+  })();
 
   function lookupPrimaryName(value){
     var v = String(value || '').trim();
     if (!v){
       nameLookupMsg.hidden = true;
-      currentMaxGuests = 1;
-      rebuildGuestsSelect(1);
-      renderPartyNameFields();
       return;
     }
     if (v === lastLookedUpName) return;
@@ -437,52 +497,24 @@
     fetch('/api/guest-lookup?name=' + encodeURIComponent(v))
       .then(function(r){ return r.json(); })
       .then(function(data){
-        if (data.found){
-          nameLookupMsg.hidden = true;
-          currentMaxGuests = data.maxGuests || 1;
-        } else {
-          nameLookupMsg.hidden = false;
+        nameLookupMsg.hidden = !!data.found;
+        if (!data.found){
           nameLookupMsg.textContent = "We couldn't find this name on our guest list. Please check the spelling, or reach out to Annie & Jay if you think this is a mistake.";
-          currentMaxGuests = 1;
         }
-        rebuildGuestsSelect(currentMaxGuests);
-        renderPartyNameFields();
       })
       .catch(function(){ /* fail quiet — the server still validates on submit */ });
   }
 
-  // Show one name field per additional guest beyond the person filling out
-  // the form (headcount - 1), preserving anything already typed if the
-  // headcount changes.
-  function renderPartyNameFields(){
-    var count = Math.max(0, (parseInt(guestsSelect.value, 10) || 1) - 1);
-    var existing = Array.prototype.slice.call(partyNamesList.querySelectorAll('input')).map(function(inp){ return inp.value; });
-    if (count <= 0){
-      partyNamesField.hidden = true;
-      partyNamesList.innerHTML = '';
-      return;
-    }
-    partyNamesField.hidden = false;
-    var html = '';
-    for (var i = 0; i < count; i++){
-      var val = (existing[i] || '').replace(/"/g, '&quot;');
-      html += '<div class="name-autocomplete"><input type="text" class="party-name-input" placeholder="Guest ' + (i + 2) + '’s name" value="' + val + '" autocomplete="off" /></div>';
-    }
-    partyNamesList.innerHTML = html;
-    Array.prototype.slice.call(partyNamesList.querySelectorAll('.party-name-input')).forEach(attachGuestAutocomplete);
-  }
-  guestsSelect.addEventListener('change', renderPartyNameFields);
-
   document.querySelectorAll('input[name="attending"]').forEach(function(radio){
     radio.addEventListener('change', function(){
-      guestCountField.style.display = (this.value === 'yes') ? 'block' : 'none';
+      partyField.hidden = (this.value !== 'yes');
       labelYes.classList.toggle('active', this.value === 'yes');
       labelNo.classList.toggle('active', this.value === 'no');
       if (this.value === 'yes') {
-        renderPartyNameFields();
+        renderPartyChips();
       } else {
-        partyNamesField.hidden = true;
-        partyNamesList.innerHTML = '';
+        partyNames = [];
+        partyChipsEl.innerHTML = '';
       }
     });
   });
@@ -494,14 +526,11 @@
     e.preventDefault();
     formMsg.className = 'form-msg';
     var attendingEl = form.querySelector('input[name="attending"]:checked');
-    var partyNames = Array.prototype.slice.call(partyNamesList.querySelectorAll('input'))
-      .map(function(inp){ return inp.value.trim(); })
-      .filter(function(v){ return v.length > 0; });
     var payload = {
       name: document.getElementById('name').value.trim(),
       attending: attendingEl ? attendingEl.value : null,
-      guests: document.getElementById('guests').value,
-      partyNames: partyNames,
+      guests: attendingEl && attendingEl.value === 'yes' ? (1 + partyNames.length) : 1,
+      partyNames: attendingEl && attendingEl.value === 'yes' ? partyNames.slice() : [],
       message: document.getElementById('message').value.trim()
     };
     if (!payload.name || !payload.attending) {
@@ -548,9 +577,11 @@
         form.reset();
         var nameSuggestBox = document.getElementById('nameSuggestions');
         if (nameSuggestBox) { nameSuggestBox.hidden = true; nameSuggestBox.innerHTML = ''; }
-        guestCountField.style.display = 'none';
-        partyNamesField.hidden = true;
-        partyNamesList.innerHTML = '';
+        partyField.hidden = true;
+        partyNames = [];
+        partyChipsEl.innerHTML = '';
+        partySearch.value = '';
+        lastLookedUpName = '';
         labelYes.classList.remove('active'); labelNo.classList.remove('active');
         loadGuestWall();
       }).catch(function(){

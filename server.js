@@ -342,35 +342,23 @@ app.post("/api/rsvp", (req, res) => {
     });
   }
 
-  const maxGuests = seatEntry.maxGuests || 1;
-  let guests = parseInt(body.guests, 10);
-  if (attending === "yes") {
-    if (!Number.isFinite(guests) || guests < 1) guests = 1;
-    if (guests > maxGuests) {
-      return res.status(400).json({
-        error: `Your invitation allows up to ${maxGuests} ${maxGuests === 1 ? "guest" : "guests"}. Please reach out to Annie & Jay if you need to bring more.`,
-      });
-    }
-  } else {
-    guests = 0;
-  }
-
-  // Optional named additional guests in the party (e.g. "and my husband and
-  // two kids") — each one must ALSO already be on the guest list, same as
-  // the primary respondent. Capped to the headcount minus the person
-  // filling out the form, regardless of what the client sends.
+  // One person can register anyone else already on the guest list along
+  // with themselves — a whole family in one RSVP if they want — so there's
+  // no per-invitation headcount cap here. Every added name still has to
+  // match someone real on the list (no inventing guests); a generous
+  // sanity ceiling just guards against a broken/huge submission.
+  const MAX_PARTY_SIZE = 40;
   const rawPartyNames = Array.isArray(body.partyNames) ? body.partyNames : [];
-  const maxParty = attending === "yes" ? Math.max(0, guests - 1) : 0;
-  const candidateNames = rawPartyNames
-    .map((n) => String(n || "").trim().slice(0, 80))
-    .filter(Boolean)
-    .slice(0, maxParty);
+  const candidateNames = attending === "yes"
+    ? rawPartyNames.map((n) => String(n || "").trim().slice(0, 80)).filter(Boolean).slice(0, MAX_PARTY_SIZE)
+    : [];
 
   const partyNames = [];
   for (const candidate of candidateNames) {
     const candidateKey = normName(candidate);
     if (candidateKey === normName(seatEntry.name)) continue; // skip an accidental self-duplicate
     if (seatEntry.nickname && candidateKey === normName(seatEntry.nickname)) continue;
+    if (partyNames.some((n) => normName(n) === candidateKey)) continue; // skip a duplicate add
     const found = findSeatByNameOrNickname(seatingList, candidate);
     if (!found) {
       return res.status(404).json({
@@ -379,6 +367,8 @@ app.post("/api/rsvp", (req, res) => {
     }
     partyNames.push(found.name);
   }
+
+  const guests = attending === "yes" ? 1 + partyNames.length : 0;
 
   const entries = readAll();
   const entry = {

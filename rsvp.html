@@ -113,6 +113,9 @@
   .name-suggestions button:hover, .name-suggestions button:active, .name-suggestions button.active{
     background:rgba(122,74,46,.1);
   }
+  .name-suggestions .no-match{
+    padding:14px 16px; font-size:.92rem; font-style:italic; color:var(--ink-soft);
+  }
   .field input[type="text"], .field textarea, .field select{
     width:100%;
     font-family:'Jost', sans-serif;
@@ -316,8 +319,15 @@
     }
 
     function showNames(names){
-      if (!names.length){ hideBox(); return; }
       box.innerHTML = '';
+      if (!names.length){
+        var none = document.createElement('div');
+        none.className = 'no-match';
+        none.textContent = "Can't find that name on the guest list.";
+        box.appendChild(none);
+        box.hidden = false;
+        return;
+      }
       names.forEach(function(n){
         var btn = document.createElement('button');
         btn.type = 'button';
@@ -460,8 +470,15 @@
     function hideBox(){ partySuggestions.hidden = true; partySuggestions.innerHTML = ''; currentSuggestions = []; }
     function showNames(names){
       currentSuggestions = names;
-      if (!names.length){ hideBox(); return; }
       partySuggestions.innerHTML = '';
+      if (!names.length){
+        var none = document.createElement('div');
+        none.className = 'no-match';
+        none.textContent = "Can't find that name on the guest list.";
+        partySuggestions.appendChild(none);
+        partySuggestions.hidden = false;
+        return;
+      }
       names.forEach(function(n){
         var btn = document.createElement('button');
         btn.type = 'button';

@@ -552,27 +552,24 @@
           formMsg.className = 'form-msg error';
           return;
         }
-        formMsg.textContent = payload.attending === 'yes'
-          ? "Thank you, " + payload.name + "! We can't wait to celebrate with you."
-          : "Thank you for letting us know, " + payload.name + ". You'll be missed!";
+        // "Joyfully accepts" goes straight to the real boarding pass(es) —
+        // the same "Find Your Table" page — instead of a QR code shown here
+        // on the RSVP form, so what the guest sees right after registering
+        // is the actual pass, not a preview of it.
+        if (payload.attending === 'yes' && res.data.seatingId) {
+          formMsg.textContent = "Thank you, " + payload.name + "! We can't wait to celebrate with you. Taking you to your boarding pass…";
+          formMsg.className = 'form-msg success';
+          window.location.href = '/table/' + res.data.seatingId;
+          return;
+        }
+
+        formMsg.textContent = "Thank you for letting us know, " + payload.name + ". You'll be missed!";
         formMsg.className = 'form-msg success';
 
         var qrResult = document.getElementById('qrResult');
         var declineResult = document.getElementById('declineResult');
-        if (payload.attending === 'yes' && res.data.seatingId) {
-          var qrUrl = '/api/qr/' + res.data.seatingId;
-          var tableUrl = '/table/' + res.data.seatingId;
-          document.getElementById('qrResultImg').src = qrUrl;
-          document.getElementById('qrResultLink').href = tableUrl;
-          qrResult.hidden = false;
-          declineResult.hidden = true;
-        } else if (payload.attending === 'no') {
-          qrResult.hidden = true;
-          declineResult.hidden = false;
-        } else {
-          qrResult.hidden = true;
-          declineResult.hidden = true;
-        }
+        qrResult.hidden = true;
+        declineResult.hidden = false;
 
         form.reset();
         var nameSuggestBox = document.getElementById('nameSuggestions');

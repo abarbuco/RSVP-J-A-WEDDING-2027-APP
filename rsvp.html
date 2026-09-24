@@ -456,15 +456,17 @@
 
   (function(){
     var debounceTimer = null;
-    function hideBox(){ partySuggestions.hidden = true; partySuggestions.innerHTML = ''; }
+    var currentSuggestions = []; // only these are addable — never raw typed text
+    function hideBox(){ partySuggestions.hidden = true; partySuggestions.innerHTML = ''; currentSuggestions = []; }
     function showNames(names){
+      currentSuggestions = names;
       if (!names.length){ hideBox(); return; }
       partySuggestions.innerHTML = '';
       names.forEach(function(n){
         var btn = document.createElement('button');
         btn.type = 'button';
         btn.textContent = n;
-        btn.addEventListener('click', function(){ addPartyName(n); });
+        btn.addEventListener('click', function(){ addPartyName(n); currentSuggestions = []; });
         partySuggestions.appendChild(btn);
       });
       partySuggestions.hidden = false;
@@ -481,7 +483,14 @@
       }, 150);
     });
     partySearch.addEventListener('keydown', function(e){
-      if (e.key === 'Enter'){ e.preventDefault(); if (partySearch.value.trim()) addPartyName(partySearch.value); }
+      // Only ever adds a name that's actually on the guest list — an exact
+      // match among the current suggestions, never whatever was typed.
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      var typed = partySearch.value.trim().toLowerCase();
+      var exact = currentSuggestions.find(function(n){ return n.toLowerCase() === typed; });
+      var match = exact || (currentSuggestions.length === 1 ? currentSuggestions[0] : null);
+      if (match) addPartyName(match);
     });
     partySearch.addEventListener('blur', function(){ setTimeout(hideBox, 150); });
   })();

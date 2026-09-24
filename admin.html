@@ -70,6 +70,7 @@
   .pill.no{ background:rgba(154,80,48,.14); color:var(--bad); }
   .pill.arrived{ background:rgba(201,154,74,.18); color:var(--gold-soft); font-weight:600; }
   .checkin-btn-sm{ font-size:.72rem; padding:5px 14px; }
+  .undo-rsvp-btn{ font-size:.72rem; padding:5px 14px; }
   .checkin-note{ flex-basis:100%; font-size:.78rem; color:var(--bad); }
   .row .guests{ font-size:.85rem; color:var(--ink-soft); white-space:nowrap; }
   .row .msg{ flex-basis:100%; font-size:.85rem; color:var(--ink-soft); font-style:italic; }
@@ -295,8 +296,9 @@
         : '';
       var checkinNote = checkinBtn ? '<span class="checkin-note" data-note-for="' + r.seatingId + '"></span>' : '';
       var qr = r.seatingId ? '<a class="qr-link" href="/api/qr/' + r.seatingId + '" target="_blank" rel="noopener">View QR</a>' : '';
-      return '<div class="row"><span class="name">' + esc(r.name) + '</span>' + pill + table + arrived + checkinBtn + qr +
-        '<span class="when">' + fmtDate(r.submittedAt) + '</span>' + party + msg + checkinNote + '</div>';
+      var undoBtn = '<button type="button" class="danger undo-rsvp-btn" data-id="' + r.id + '" data-name="' + esc(r.name) + '">Undo RSVP</button>';
+      return '<div class="row" data-rsvp-id="' + r.id + '"><span class="name">' + esc(r.name) + '</span>' + pill + table + arrived + checkinBtn + qr +
+        '<span class="when">' + fmtDate(r.submittedAt) + '</span>' + party + msg + checkinNote + undoBtn + '</div>';
     }).join('');
   }
 
@@ -317,25 +319,48 @@
   loadRsvps();
 
   listEl.addEventListener('click', function(e){
-    var btn = e.target.closest('.checkin-btn-sm');
-    if (!btn) return;
-    var id = btn.getAttribute('data-id');
-    var row = btn.closest('.row');
-    var note = row ? row.querySelector('.checkin-note') : null;
-    btn.disabled = true; btn.textContent = 'Checking in…';
-    fetch('/api/checkin/' + encodeURIComponent(id), { method: 'POST' })
-      .then(function(r){ return r.json().then(function(data){ return { ok: r.ok, data: data }; }); })
-      .then(function(res){
-        if (res.ok && res.data.checkedIn){
-          loadRsvps();
-        } else {
-          btn.disabled = false; btn.textContent = 'Check In';
-          if (note) note.textContent = (res.data && res.data.error) || 'Something went wrong.';
-        }
-      }).catch(function(){
-        btn.disabled = false; btn.textContent = 'Check In';
-        if (note) note.textContent = 'Network hiccup — please try again.';
-      });
+    var checkinBtn = e.target.closest('.checkin-btn-sm');
+    if (checkinBtn){
+      var id = checkinBtn.getAttribute('data-id');
+      var row = checkinBtn.closest('.row');
+      var note = row ? row.querySelector('.checkin-note') : null;
+      checkinBtn.disabled = true; checkinBtn.textContent = 'Checking in…';
+      fetch('/api/checkin/' + encodeURIComponent(id), { method: 'POST' })
+        .then(function(r){ return r.json().then(function(data){ return { ok: r.ok, data: data }; }); })
+        .then(function(res){
+          if (res.ok && res.data.checkedIn){
+            loadRsvps();
+          } else {
+            checkinBtn.disabled = false; checkinBtn.textContent = 'Check In';
+            if (note) note.textContent = (res.data && res.data.error) || 'Something went wrong.';
+          }
+        }).catch(function(){
+          checkinBtn.disabled = false; checkinBtn.textContent = 'Check In';
+          if (note) note.textContent = 'Network hiccup — please try again.';
+        });
+      return;
+    }
+
+    var undoBtn = e.target.closest('.undo-rsvp-btn');
+    if (undoBtn){
+      var rsvpId = undoBtn.getAttribute('data-id');
+      var rsvpName = undoBtn.getAttribute('data-name');
+      if (!confirm('Undo the RSVP for ' + rsvpName + '? They\'ll stay on the guest list and can RSVP again anytime.')) return;
+      undoBtn.disabled = true; undoBtn.textContent = 'Undoing…';
+      fetch('/api/admin/rsvp/' + encodeURIComponent(rsvpId), { method: 'DELETE' })
+        .then(function(r){ return r.json().then(function(data){ return { ok: r.ok, data: data }; }); })
+        .then(function(res){
+          if (res.ok){
+            loadRsvps();
+          } else {
+            undoBtn.disabled = false; undoBtn.textContent = 'Undo RSVP';
+            alert((res.data && res.data.error) || 'Something went wrong.');
+          }
+        }).catch(function(){
+          undoBtn.disabled = false; undoBtn.textContent = 'Undo RSVP';
+          alert('Network hiccup — please try again.');
+        });
+    }
   });
 
   // ================= Seating List & QR =================

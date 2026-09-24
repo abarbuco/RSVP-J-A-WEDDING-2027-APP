@@ -733,6 +733,17 @@ app.post("/api/admin/rsvp/bulk-attend", (req, res) => {
   res.json({ ok: true, attended, alreadyRsvpd, notFound, results });
 });
 
+// Undo a single RSVP response — e.g. a test entry, or a guest who wants a
+// clean slate to resubmit. This only removes that one RSVP record; the
+// person stays on the seating/guest list and can RSVP again anytime.
+app.delete("/api/admin/rsvp/:id", (req, res) => {
+  const entries = readAll();
+  const next = entries.filter((e) => e.id !== req.params.id);
+  if (next.length === entries.length) return res.status(404).json({ error: "RSVP not found." });
+  writeAll(next);
+  res.json({ ok: true });
+});
+
 // Bulk-import from an Excel file: columns "Name" / "Full Name", "Table" /
 // "Table Number", and an optional "Guests" / "Max Guests" / "Party Size"
 // column (header matching is case-insensitive) that sets how many people

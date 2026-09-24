@@ -94,6 +94,10 @@
     background:rgba(43,33,26,.72); color:#fff8ee; font-size:.9rem; line-height:24px; text-align:center; text-decoration:none;
   }
   #guestPhotosBulkBar{ display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:12px; font-size:.85rem; }
+  .bulk-attend-bar{ display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin-top:12px; font-size:.85rem; }
+  .bulk-select-all{ display:flex; align-items:center; gap:6px; cursor:pointer; }
+  #bulkAttendMsg{ font-size:.82rem; color:var(--good); }
+  .row .seat-select{ width:18px; height:18px; cursor:pointer; flex:0 0 auto; }
   .ok{ color:var(--good); font-size:.85rem; margin-top:8px; }
   .upload-summary{ font-size:.85rem; margin-top:10px; }
   a.qr-link{ color:var(--rust); font-size:.82rem; text-decoration:none; border-bottom:1px dotted var(--rust); }
@@ -159,6 +163,14 @@
     <div id="seatAddMsg"></div>
 
     <input type="search" id="seatSearch" placeholder="Search seating list…" autocomplete="off" style="margin-top:16px;" />
+
+    <div class="bulk-attend-bar">
+      <label class="bulk-select-all"><input type="checkbox" id="seatSelectAll" /> Select all</label>
+      <button id="bulkAttendBtn" class="ghost" disabled>Mark selected as attending (0)</button>
+      <span id="bulkAttendMsg"></span>
+    </div>
+    <p class="desc" style="margin-top:-4px;">Use this if you're confirming guests yourself (e.g. by phone) instead of waiting for them to RSVP on the site — each checked guest gets their own real "attending" RSVP under their own name, at 1 guest each (their own Guests Allowed still applies if they RSVP themselves later).</p>
+
     <div class="list" id="seatList"><p class="empty">Loading…</p></div>
   </div>
 
@@ -330,16 +342,32 @@
   var allSeating = [];
   var seatListEl = document.getElementById('seatList');
   var seatSearchEl = document.getElementById('seatSearch');
+  var selectedSeatIds = {};
+  var seatSelectAllEl = document.getElementById('seatSelectAll');
+  var bulkAttendBtn = document.getElementById('bulkAttendBtn');
+  var bulkAttendMsg = document.getElementById('bulkAttendMsg');
+
+  function selectedCount(){ return Object.keys(selectedSeatIds).filter(function(id){ return selectedSeatIds[id]; }).length; }
+
+  function updateBulkAttendUI(){
+    var n = selectedCount();
+    bulkAttendBtn.textContent = 'Mark selected as attending (' + n + ')';
+    bulkAttendBtn.disabled = n === 0;
+  }
 
   function renderSeating(){
     var q = seatSearchEl.value.trim().toLowerCase();
     var rows = q ? allSeating.filter(function(s){ return s.name.toLowerCase().indexOf(q) !== -1; }) : allSeating;
     if (!rows.length){
       seatListEl.innerHTML = '<p class="empty">' + (q ? 'No matching guest found.' : 'No seating entries yet — upload a file or add a guest above.') + '</p>';
+      seatSelectAllEl.checked = false;
+      updateBulkAttendUI();
       return;
     }
     seatListEl.innerHTML = rows.map(function(s){
+      var checked = selectedSeatIds[s.id] ? ' checked' : '';
       return '<div class="row" data-id="' + s.id + '">' +
+        '<input type="checkbox" class="seat-select" data-id="' + s.id + '"' + checked + ' title="Select for bulk attending" />' +
         '<span class="name">' + esc(s.name) + '</span>' +
         '<input type="text" class="table-input nickname-input" value="' + esc(s.nickname || '') + '" placeholder="Nickname" />' +
         '<input type="text" class="table-input" value="' + esc(s.table || '') + '" placeholder="Table" />' +
@@ -350,6 +378,8 @@
         '<button class="danger remove-seat-btn" type="button">Remove</button>' +
         '</div>';
     }).join('');
+    seatSelectAllEl.checked = rows.length > 0 && rows.every(function(s){ return !!selectedSeatIds[s.id]; });
+    updateBulkAttendUI();
   }
 
   function loadSeating(){
@@ -363,6 +393,58 @@
   }
   seatSearchEl.addEventListener('input', renderSeating);
   loadSeating();
+
+  seatListEl.addEventListener('change', function(e){
+    if (!e.target.classList.contains('seat-select')) return;
+    var id = e.target.getAttribute('data-id');
+    if (e.target.checked) selectedSeatIds[id] = true; else delete selectedSeatIds[id];
+    var q = seatSearchEl.value.trim().toLowerCase();
+    var rows = q ? allSeating.filter(function(s){ return s.name.toLowerCase().indexOf(q) !== -1; }) : allSeating;
+    seatSelectAllEl.checked = rows.length > 0 && rows.every(function(s){ return !!selectedSeatIds[s.id]; });
+    updateBulkAttendUI();
+  });
+
+  seatSelectAllEl.addEventListener('change', function(){
+    var q = seatSearchEl.value.trim().toLowerCase();
+    var rows = q ? allSeating.filter(function(s){ return s.name.toLowerCase().indexOf(q) !== -1; }) : allSeating;
+    rows.forEach(function(s){
+      if (seatSelectAllEl.checked) selectedSeatIds[s.id] = true; else delete selectedSeatIds[s.id];
+    });
+    renderSeating();
+  });
+
+  bulkAttendBtn.addEventListener('click', function(){
+    var ids = Object.keys(selectedSeatIds).filter(function(id){ return selectedSeatIds[id]; });
+    if (!ids.length) return;
+    var names = ids.map(function(id){
+      var s = allSeating.find(function(x){ return x.id === id; });
+      return s ? s.name : id;
+    });
+    if (!confirm('Mark ' + ids.length + ' guest(s) as attending?\n\n' + names.join(', '))) return;
+    bulkAttendBtn.disabled = true; bulkAttendBtn.textContent = 'Marking attending…';
+    bulkAttendMsg.textContent = '';
+    fetch('/api/admin/rsvp/bulk-attend', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids: ids })
+    }).then(function(r){ return r.json().then(function(data){ return { ok: r.ok, data: data }; }); })
+      .then(function(res){
+        if (!res.ok){
+          bulkAttendMsg.style.color = 'var(--bad)';
+          bulkAttendMsg.textContent = (res.data && res.data.error) || 'Something went wrong.';
+          updateBulkAttendUI();
+          return;
+        }
+        bulkAttendMsg.style.color = 'var(--good)';
+        bulkAttendMsg.textContent = res.data.attended + ' marked attending' +
+          (res.data.alreadyRsvpd ? ', ' + res.data.alreadyRsvpd + ' already had an RSVP' : '') + '.';
+        selectedSeatIds = {};
+        loadSeating();
+      }).catch(function(){
+        bulkAttendMsg.style.color = 'var(--bad)';
+        bulkAttendMsg.textContent = 'Network hiccup — please try again.';
+        updateBulkAttendUI();
+      });
+  });
 
   seatListEl.addEventListener('click', function(e){
     var row = e.target.closest('.row');
@@ -387,6 +469,7 @@
     }
     if (e.target.classList.contains('remove-seat-btn')){
       if (!confirm('Remove this guest from the seating list?')) return;
+      delete selectedSeatIds[id];
       fetch('/api/admin/seating/' + id, { method: 'DELETE' }).then(function(){ loadSeating(); });
     }
   });

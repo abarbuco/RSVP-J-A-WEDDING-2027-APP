@@ -687,6 +687,62 @@ app.delete("/api/admin/seating/:id", (req, res) => {
   res.json({ ok: true });
 });
 
+// Lets Annie mark a batch of already-listed guests as "attending" in one
+// click, instead of having to open the public RSVP page and submit it
+// once per person herself (e.g. for family she's already confirmed with
+// by phone). Each selected guest gets their OWN real RSVP record under
+// their own name — this is not a single combined entry, so headcounts,
+// the Guest List, and each person's boarding pass all stay accurate.
+// A guest who already has an RSVP is left alone (never duplicated); one
+// who previously declined is flipped to attending. "Guests Allowed" on
+// the seating entry still caps what a guest could add for themselves —
+// this only ever registers the ONE named person per row, at 1 guest each.
+app.post("/api/admin/rsvp/bulk-attend", (req, res) => {
+  const body = req.body || {};
+  const ids = Array.isArray(body.ids) ? body.ids : [];
+  if (!ids.length) return res.status(400).json({ error: "No guests selected." });
+
+  const seatingList = readSeating();
+  const rsvps = readAll();
+  let attended = 0, alreadyRsvpd = 0, notFound = 0;
+  const results = [];
+
+  ids.forEach((id) => {
+    const seat = seatingList.find((s) => s.id === id);
+    if (!seat) { notFound++; return; }
+
+    const key = normName(seat.name);
+    const existing = rsvps.find((e) => {
+      if (normName(e.name) === key) return true;
+      return Array.isArray(e.partyNames) && e.partyNames.some((n) => normName(n) === key);
+    });
+
+    if (existing) {
+      if (existing.attending !== "yes") existing.attending = "yes";
+      alreadyRsvpd++;
+      results.push({ id, name: seat.name, status: "already_rsvpd" });
+      return;
+    }
+
+    rsvps.push({
+      id: crypto.randomUUID(),
+      name: seat.name,
+      attending: "yes",
+      guests: 1,
+      partyNames: [],
+      message: "",
+      seatingId: seat.id,
+      submittedAt: new Date().toISOString(),
+      recordedByAdmin: true,
+    });
+    attended++;
+    results.push({ id, name: seat.name, status: "attending" });
+  });
+
+  writeAll(rsvps);
+  res.json({ ok: true, attended, alreadyRsvpd, notFound, results });
+});
+
 // Bulk-import from an Excel file: columns "Name" / "Full Name", "Table" /
 // "Table Number", and an optional "Guests" / "Max Guests" / "Party Size"
 // column (header matching is case-insensitive) that sets how many people

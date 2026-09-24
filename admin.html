@@ -125,7 +125,7 @@
   <!-- ---------------- Seating & QR codes ---------------- -->
   <div class="panel">
     <h2>Seating List &amp; QR Codes</h2>
-    <p class="desc">This list is the guest list — only names on it can RSVP. Upload your Excel seating chart (columns "Name", "Table", and optionally "Guests" for how many each invitation allows), or add guests one at a time. Each guest gets a personal QR code that shows their table and the program when scanned — no typing needed.</p>
+    <p class="desc">This list is the guest list — only names on it can RSVP. Upload your Excel seating chart (columns "Name" or "Full Name", "Table" or "Table Number", optionally "Nickname", and optionally "Guests" for how many each invitation allows), or add guests one at a time. Each guest gets a personal QR code that shows their table and the program when scanned — no typing needed.</p>
 
     <div class="field">
       <label for="seatFile">Upload seating list (.xlsx)</label>
@@ -139,7 +139,11 @@
     <div class="row-fields">
       <div class="field">
         <label for="seatName">Add one guest — name</label>
-        <input type="text" id="seatName" placeholder="e.g. Maria Santos" />
+        <input type="text" id="seatName" placeholder="e.g. Maria Santos or Maria Santos +1" />
+      </div>
+      <div class="field" style="flex:0 0 130px;">
+        <label for="seatNickname">Nickname</label>
+        <input type="text" id="seatNickname" placeholder="e.g. Marites" />
       </div>
       <div class="field" style="flex:0 0 110px;">
         <label for="seatTable">Table</label>
@@ -150,6 +154,7 @@
         <input type="number" id="seatMaxGuests" min="1" max="20" placeholder="1" />
       </div>
     </div>
+    <p class="desc" style="margin-top:-6px;">Tip: to give someone a plus-one without a separate "Guests" column, add a second row (or use "Add / Update Guest" again) with their name plus "+1" — e.g. "Kyle Josef" and then "Kyle Josef +1". This bumps Kyle's own Guests allowed to 2 <em>and</em> adds "Kyle Josef +1" as its own guest-list entry, so it can be typed in as his plus-one's name when he RSVPs.</p>
     <button id="seatAddBtn" class="ghost">Add / Update Guest</button>
     <div id="seatAddMsg"></div>
 
@@ -336,6 +341,7 @@
     seatListEl.innerHTML = rows.map(function(s){
       return '<div class="row" data-id="' + s.id + '">' +
         '<span class="name">' + esc(s.name) + '</span>' +
+        '<input type="text" class="table-input nickname-input" value="' + esc(s.nickname || '') + '" placeholder="Nickname" />' +
         '<input type="text" class="table-input" value="' + esc(s.table || '') + '" placeholder="Table" />' +
         '<input type="number" class="table-input max-guests-input" min="1" max="20" value="' + esc(s.maxGuests || 1) + '" title="Guests allowed" />' +
         '<button class="ghost save-seat-btn" type="button">Save</button>' +
@@ -364,12 +370,13 @@
     var id = row.getAttribute('data-id');
     if (e.target.classList.contains('save-seat-btn')){
       var name = row.querySelector('.name').textContent;
-      var table = row.querySelector('.table-input').value;
+      var nickname = row.querySelector('.nickname-input').value;
+      var table = row.querySelector('.table-input:not(.nickname-input)').value;
       var maxGuests = row.querySelector('.max-guests-input').value;
       e.target.disabled = true; e.target.textContent = 'Saving…';
       fetch('/api/admin/seating', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: name, table: table, maxGuests: maxGuests })
+        body: JSON.stringify({ name: name, nickname: nickname, table: table, maxGuests: maxGuests })
       }).then(function(r){ return r.json(); }).then(function(){
         e.target.disabled = false; e.target.textContent = 'Saved ✓';
         setTimeout(function(){ e.target.textContent = 'Save'; }, 1500);
@@ -387,16 +394,18 @@
   document.getElementById('seatAddBtn').addEventListener('click', function(){
     var msgEl = document.getElementById('seatAddMsg');
     var name = document.getElementById('seatName').value.trim();
+    var nickname = document.getElementById('seatNickname').value.trim();
     var table = document.getElementById('seatTable').value.trim();
     var maxGuests = document.getElementById('seatMaxGuests').value.trim();
     if (!name){ msgEl.innerHTML = '<p class="err">Please enter a name.</p>'; return; }
     fetch('/api/admin/seating', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: name, table: table, maxGuests: maxGuests })
+      body: JSON.stringify({ name: name, nickname: nickname, table: table, maxGuests: maxGuests })
     }).then(function(r){ return r.json(); }).then(function(data){
       if (!data.ok){ msgEl.innerHTML = '<p class="err">' + esc(data.error || 'Something went wrong.') + '</p>'; return; }
-      msgEl.innerHTML = '<p class="ok">Saved ' + esc(name) + '.</p>';
+      msgEl.innerHTML = '<p class="ok">Saved ' + esc((data.entry && data.entry.name) || name) + '.</p>';
       document.getElementById('seatName').value = '';
+      document.getElementById('seatNickname').value = '';
       document.getElementById('seatTable').value = '';
       document.getElementById('seatMaxGuests').value = '';
       loadSeating();

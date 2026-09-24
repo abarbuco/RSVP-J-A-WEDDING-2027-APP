@@ -133,7 +133,7 @@ function isRsvpClosed(settings) {
 // Excel re-upload that doesn't include a Guests column: pass undefined/""
 // to preserve whatever is already set (defaulting a brand-new entry to 1),
 // or a number to set it explicitly.
-function upsertSeating(list, rawName, rawTable, rawMaxGuests) {
+function upsertSeating(list, rawName, rawTable, rawMaxGuests, rawNickname) {
   const name = String(rawName || "").trim().slice(0, 80);
   const table = String(rawTable || "").trim().slice(0, 20);
   const key = normName(name);
@@ -145,9 +145,17 @@ function upsertSeating(list, rawName, rawTable, rawMaxGuests) {
     if (Number.isFinite(parsed) && parsed >= 1) maxGuests = Math.min(parsed, 20);
   }
 
+  // Nickname follows the same "blank means leave it alone" rule as
+  // maxGuests — a re-upload or edit that doesn't mention a nickname
+  // shouldn't erase one that's already saved.
+  let nickname; // undefined = leave as-is
+  if (rawNickname !== undefined && rawNickname !== null && String(rawNickname).trim() !== "") {
+    nickname = String(rawNickname).trim().slice(0, 60);
+  }
+
   const idx = list.findIndex((s) => normName(s.name) === key);
   if (idx === -1) {
-    const entry = { id: crypto.randomUUID(), name, table: table || null, maxGuests: maxGuests || 1 };
+    const entry = { id: crypto.randomUUID(), name, table: table || null, maxGuests: maxGuests || 1, nickname: nickname || null };
     list.push(entry);
     return { entry, created: true };
   }
@@ -155,7 +163,55 @@ function upsertSeating(list, rawName, rawTable, rawMaxGuests) {
   if (name) list[idx].name = name;
   if (maxGuests !== undefined) list[idx].maxGuests = maxGuests;
   else if (!list[idx].maxGuests) list[idx].maxGuests = 1;
+  if (nickname !== undefined) list[idx].nickname = nickname;
   return { entry: list[idx], created: false };
+}
+
+// Some guest lists mark a plus-one as its own row instead of using a
+// "Guests" column — e.g. one row "Kyle Josef" and a second row
+// "Kyle Josef +1" (nickname "Kyle Partner") meaning "Kyle Josef, plus a
+// companion not named yet." This upserts BOTH: it bumps Kyle's own
+// headcount (so his RSVP form offers "2 guests" and a second name field),
+// AND keeps the "+1" row as its own distinct, findable guest-list entry —
+// so that placeholder can actually be selected/typed as Kyle's second
+// guest when he RSVPs. Kyle's existing table/nickname are left alone
+// unless this row's own cells actually say otherwise. A row without a
+// trailing "+N" passes straight through to upsertSeating unchanged.
+function upsertSeatingRow(list, rawName, rawTable, rawMaxGuests, rawNickname) {
+  const raw = String(rawName || "").trim();
+  const plusOneMatch = raw.match(/^(.*?)\s*\(?\+\s*(\d+)\)?\s*$/);
+  const baseName = plusOneMatch ? plusOneMatch[1].trim() : "";
+  if (!plusOneMatch || !baseName) {
+    return upsertSeating(list, rawName, rawTable, rawMaxGuests, rawNickname);
+  }
+
+  const extra = parseInt(plusOneMatch[2], 10);
+  const existingBase = list.find((s) => normName(s.name) === normName(baseName));
+  const desiredMax =
+    rawMaxGuests !== undefined && rawMaxGuests !== null && String(rawMaxGuests).trim() !== ""
+      ? rawMaxGuests
+      : Math.max((existingBase && existingBase.maxGuests) || 1, 1 + extra);
+  const tableTrimmed = String(rawTable || "").trim();
+  const baseTable = tableTrimmed ? rawTable : existingBase ? existingBase.table : rawTable;
+
+  upsertSeating(list, baseName, baseTable, desiredMax, undefined);
+  // The placeholder keeps the "+1" in its own name so it never collides
+  // with the named guest above, and always brings exactly itself (1).
+  return upsertSeating(list, raw, rawTable, 1, rawNickname);
+}
+
+// A guest may type either their full name or their nickname — this looks
+// a typed name up against both, so "Lodi" finds the same guest-list entry
+// as "Lodivico Cruz Josef" would. Full-name matches win over nickname
+// matches when (rarely) both could apply.
+function findSeatByNameOrNickname(list, rawName) {
+  const key = normName(rawName);
+  if (!key) return null;
+  return (
+    list.find((s) => normName(s.name) === key) ||
+    list.find((s) => s.nickname && normName(s.nickname) === key) ||
+    null
+  );
 }
 
 async function generateQrSvg(url) {
@@ -279,7 +335,7 @@ app.post("/api/rsvp", (req, res) => {
   // added by hand in the admin seating list) — nobody can add themselves,
   // or anyone else, to the list just by filling out this form.
   const seatingList = readSeating();
-  const seatEntry = seatingList.find((s) => normName(s.name) === normName(name));
+  const seatEntry = findSeatByNameOrNickname(seatingList, name);
   if (!seatEntry) {
     return res.status(404).json({
       error: `We couldn't find "${name}" on our guest list. Please check the spelling, or reach out to Annie & Jay if you think this is a mistake.`,
@@ -312,8 +368,10 @@ app.post("/api/rsvp", (req, res) => {
 
   const partyNames = [];
   for (const candidate of candidateNames) {
-    if (normName(candidate) === normName(seatEntry.name)) continue; // skip an accidental self-duplicate
-    const found = seatingList.find((s) => normName(s.name) === normName(candidate));
+    const candidateKey = normName(candidate);
+    if (candidateKey === normName(seatEntry.name)) continue; // skip an accidental self-duplicate
+    if (seatEntry.nickname && candidateKey === normName(seatEntry.nickname)) continue;
+    const found = findSeatByNameOrNickname(seatingList, candidate);
     if (!found) {
       return res.status(404).json({
         error: `We couldn't find "${candidate}" on our guest list. Please check the spelling, or reach out to Annie & Jay if you think this is a mistake.`,
@@ -343,10 +401,8 @@ app.post("/api/rsvp", (req, res) => {
 // actually on the guest list, and reports how many guests that invitation
 // is allowed to bring (so the form can cap the dropdown before submitting).
 app.get("/api/guest-lookup", (req, res) => {
-  const key = normName(req.query.name);
-  if (!key) return res.json({ found: false });
   const list = readSeating();
-  const entry = list.find((s) => normName(s.name) === key);
+  const entry = findSeatByNameOrNickname(list, req.query.name);
   if (!entry) return res.json({ found: false });
   res.json({ found: true, name: entry.name, maxGuests: entry.maxGuests || 1 });
 });
@@ -401,9 +457,9 @@ function findSeatingMatches(rawName) {
   const q = normName(rawName);
   if (!q) return { exact: null, candidates: [] };
   const list = readSeating();
-  const exactMatches = list.filter((s) => normName(s.name) === q);
+  const exactMatches = list.filter((s) => normName(s.name) === q || (s.nickname && normName(s.nickname) === q));
   if (exactMatches.length === 1) return { exact: exactMatches[0], candidates: [] };
-  const partial = list.filter((s) => normName(s.name).includes(q));
+  const partial = list.filter((s) => normName(s.name).includes(q) || (s.nickname && normName(s.nickname).includes(q)));
   if (partial.length === 1) return { exact: partial[0], candidates: [] };
   return { exact: null, candidates: partial.map((s) => s.name) };
 }
@@ -477,10 +533,16 @@ app.get("/api/seating-names", (req, res) => {
   const list = readSeating();
   const startsWith = [];
   const contains = [];
+  // Matching also checks nickname, but the suggestion shown (and filled in)
+  // is always the Full Name — so typing "Lodi" surfaces "Lodivico Cruz
+  // Josef" in the dropdown, not the nickname itself.
   list.forEach((s) => {
     const n = normName(s.name);
-    if (n.startsWith(q)) startsWith.push(s.name);
-    else if (n.includes(q)) contains.push(s.name);
+    const nick = s.nickname ? normName(s.nickname) : "";
+    const startsMatch = n.startsWith(q) || (nick && nick.startsWith(q));
+    const containsMatch = n.includes(q) || (nick && nick.includes(q));
+    if (startsMatch) startsWith.push(s.name);
+    else if (containsMatch) contains.push(s.name);
   });
   res.json({ names: startsWith.concat(contains).slice(0, 8) });
 });
@@ -612,7 +674,7 @@ app.post("/api/admin/seating", (req, res) => {
   if (!name) return res.status(400).json({ error: "Please enter a name." });
 
   const list = readSeating();
-  const { entry, created } = upsertSeating(list, name, body.table, body.maxGuests);
+  const { entry, created } = upsertSeatingRow(list, name, body.table, body.maxGuests, body.nickname);
   writeSeating(list);
   res.status(created ? 201 : 200).json({ ok: true, entry, created });
 });
@@ -658,6 +720,8 @@ app.post("/api/admin/seating/upload", (req, res) => {
     || headerKeys.find((k) => /table|seat/i.test(k));
   const maxGuestsKey = headerKeys.find((k) => /^(max\s*guests?|guests?\s*(allowed|allotted)?|party\s*size|no\.?\s*of\s*guests|number\s*of\s*guests|total\s*guests?)$/i.test(k.trim()))
     || headerKeys.find((k) => /guest/i.test(k));
+  const nicknameKey = headerKeys.find((k) => /^nick\s*name$/i.test(k.trim()))
+    || headerKeys.find((k) => /nick/i.test(k));
 
   if (!nameKey) {
     return res.status(400).json({ error: "Could not find a Name column. Please include a column named \"Name\"." });
@@ -669,8 +733,9 @@ app.post("/api/admin/seating/upload", (req, res) => {
     const name = String(row[nameKey] || "").trim();
     const table = tableKey ? String(row[tableKey] || "").trim() : "";
     const maxGuestsRaw = maxGuestsKey ? row[maxGuestsKey] : undefined;
+    const nicknameRaw = nicknameKey ? row[nicknameKey] : undefined;
     if (!name) { skipped++; return; }
-    const { created: wasCreated } = upsertSeating(list, name, table, maxGuestsRaw);
+    const { created: wasCreated } = upsertSeatingRow(list, name, table, maxGuestsRaw, nicknameRaw);
     if (wasCreated) created++; else updated++;
   });
   writeSeating(list);

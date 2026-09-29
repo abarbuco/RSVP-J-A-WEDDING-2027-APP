@@ -342,6 +342,23 @@ app.post("/api/rsvp", (req, res) => {
     });
   }
 
+  // Stop the same guest from being registered twice — once on their own,
+  // and once inside someone else's multi-person RSVP (this is what was
+  // producing double entries on the guest wall / guest counts). If a
+  // response genuinely needs to change, that goes through the admin
+  // "Undo RSVP" tool first, not a second submission here.
+  const entries = readAll();
+  const selfKey = normName(seatEntry.name);
+  const existingOwner = findOwningRsvp(entries, selfKey);
+  if (existingOwner) {
+    const alreadySelf = normName(existingOwner.name) === selfKey;
+    return res.status(409).json({
+      error: alreadySelf
+        ? `${seatEntry.name} has already responded to this RSVP. If you need to change that response, please reach out to Annie & Jay directly.`
+        : `${seatEntry.name} is already registered as part of ${existingOwner.name}'s RSVP. If that's not right, please reach out to Annie & Jay directly.`,
+    });
+  }
+
   // One person can register anyone else already on the guest list along
   // with themselves — a whole family in one RSVP if they want — so there's
   // no per-invitation headcount cap here. Every added name still has to
@@ -365,12 +382,19 @@ app.post("/api/rsvp", (req, res) => {
         error: `We couldn't find "${candidate}" on our guest list. Please check the spelling, or reach out to Annie & Jay if you think this is a mistake.`,
       });
     }
+    const claimedBy = findOwningRsvp(entries, normName(found.name));
+    if (claimedBy) {
+      return res.status(409).json({
+        error: normName(claimedBy.name) === normName(found.name)
+          ? `${found.name} has already responded to this RSVP on their own, so they can't be added here too. Please remove them from your list to continue.`
+          : `${found.name} is already registered as part of ${claimedBy.name}'s RSVP, so they can't be added here too. Please remove them from your list to continue.`,
+      });
+    }
     partyNames.push(found.name);
   }
 
   const guests = attending === "yes" ? 1 + partyNames.length : 0;
 
-  const entries = readAll();
   const entry = {
     id: crypto.randomUUID(),
     name: seatEntry.name, // canonical spelling from the guest list
@@ -452,6 +476,20 @@ function findSeatingMatches(rawName) {
   const partial = list.filter((s) => normName(s.name).includes(q) || (s.nickname && normName(s.nickname).includes(q)));
   if (partial.length === 1) return { exact: partial[0], candidates: [] };
   return { exact: null, candidates: partial.map((s) => s.name) };
+}
+
+// Finds the RSVP record (if any) that already "claims" a given guest-list
+// name — either because that guest already submitted their own RSVP (yes
+// or no), or because someone else's "yes" RSVP already lists them as part
+// of that person's party. Used by POST /api/rsvp to stop the same guest
+// from ending up registered twice: once on their own and once inside
+// someone else's multi-person RSVP (or twice over, submitted by two
+// different people).
+function findOwningRsvp(entries, key) {
+  return entries.find((e) => {
+    if (normName(e.name) === key) return true;
+    return e.attending === "yes" && Array.isArray(e.partyNames) && e.partyNames.some((n) => normName(n) === key);
+  });
 }
 
 // A guest's QR code (or name search) shows their WHOLE party together —

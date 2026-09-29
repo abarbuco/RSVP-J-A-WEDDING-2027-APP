@@ -354,8 +354,8 @@ app.post("/api/rsvp", (req, res) => {
     const alreadySelf = normName(existingOwner.name) === selfKey;
     return res.status(409).json({
       error: alreadySelf
-        ? `${seatEntry.name} has already responded to this RSVP. If you need to change that response, please reach out to Annie & Jay directly.`
-        : `${seatEntry.name} is already registered as part of ${existingOwner.name}'s RSVP. If that's not right, please reach out to Annie & Jay directly.`,
+        ? `${seatEntry.name} has already responded to this RSVP. Please check your boarding pass in "Find My Table" — if that's not you, please directly contact Annie & Jay.`
+        : `${seatEntry.name} is already registered as part of ${existingOwner.name}'s RSVP. Please check your boarding pass in "Find My Table" — if that's not you, please directly contact Annie & Jay.`,
     });
   }
 

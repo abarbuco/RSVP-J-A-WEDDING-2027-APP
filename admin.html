@@ -411,17 +411,20 @@
       // else's RSVP (partyOf is set) shares the exact same QR/boarding
       // pass as that RSVP's owner, so we don't print a redundant, separate
       // one for them — just point to whose card already covers them.
+      // "View QR" and "Print QR Card" opened the exact same QR code — the
+      // card page just shows it nicely formatted with the guest's name and
+      // table, and can be viewed on screen just as easily as printed — so
+      // there's no need for two separate links to it. One link does both.
       var qrLinks;
       if (s.status !== 'yes') {
         qrLinks = '<span class="party-of">QR available once accepted</span>';
       } else if (s.partyOf) {
         var owner = allSeating.find(function(x){ return normNameLocal(x.name) === normNameLocal(s.partyOf); });
         qrLinks = owner
-          ? '<a class="qr-link" href="/api/qr/' + owner.id + '" target="_blank" rel="noopener">View QR (via ' + esc(owner.name) + ')</a>'
+          ? '<a class="qr-link" href="/admin/qr-print?q=' + encodeURIComponent(owner.name) + '" target="_blank" rel="noopener">Print QR Card (via ' + esc(owner.name) + ')</a>'
           : '<span class="party-of">Same QR as ' + esc(s.partyOf) + '</span>';
       } else {
-        qrLinks = '<a class="qr-link" href="/api/qr/' + s.id + '" target="_blank" rel="noopener">View QR</a>' +
-          '<a class="qr-link" href="/admin/qr-print?q=' + encodeURIComponent(s.name) + '" target="_blank" rel="noopener">Print QR Card</a>';
+        qrLinks = '<a class="qr-link" href="/admin/qr-print?q=' + encodeURIComponent(s.name) + '" target="_blank" rel="noopener">Print QR Card</a>';
       }
       return '<div class="row" data-id="' + s.id + '">' +
         '<input type="checkbox" class="seat-select" data-id="' + s.id + '"' + checked + ' title="Select for bulk attending" />' +

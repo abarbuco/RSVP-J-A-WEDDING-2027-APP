@@ -1203,6 +1203,28 @@ app.post("/api/admin/program", (req, res) => {
   res.status(201).json({ ok: true, entry });
 });
 
+// Edits an existing program item in place (time and/or title) — used by
+// the Wedding Program panel's per-row "Save" button, so a typo or a time
+// change doesn't require removing the item and re-adding it (which would
+// also lose its position in the list).
+app.put("/api/admin/program/:id", (req, res) => {
+  const body = req.body || {};
+  const program = readProgram();
+  const entry = program.find((p) => p.id === req.params.id);
+  if (!entry) return res.status(404).json({ error: "Program item not found." });
+
+  if (body.title !== undefined) {
+    const title = String(body.title).trim().slice(0, 120);
+    if (!title) return res.status(400).json({ error: "Please describe the event." });
+    entry.title = title;
+  }
+  if (body.time !== undefined) {
+    entry.time = String(body.time).trim().slice(0, 40);
+  }
+  writeProgram(program);
+  res.json({ ok: true, entry });
+});
+
 app.delete("/api/admin/program/:id", (req, res) => {
   const program = readProgram();
   const next = program.filter((p) => p.id !== req.params.id);

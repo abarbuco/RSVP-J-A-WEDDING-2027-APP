@@ -710,8 +710,9 @@
       if (!items.length){ progListEl.innerHTML = '<p class="empty">No program items yet.</p>'; return; }
       progListEl.innerHTML = items.map(function(p){
         return '<div class="row" data-id="' + p.id + '">' +
-          '<span class="table-badge" style="min-width:70px;">' + esc(p.time || '') + '</span>' +
-          '<span class="name" style="font-weight:400;">' + esc(p.title) + '</span>' +
+          '<input type="text" class="table-input prog-time-input" value="' + esc(p.time || '') + '" placeholder="Time" style="width:100px;" />' +
+          '<input type="text" class="name-input prog-title-input" value="' + esc(p.title) + '" placeholder="Event" style="font-weight:400;" />' +
+          '<button class="ghost save-prog-btn" type="button">Save</button>' +
           '<button class="danger remove-prog-btn" type="button">Remove</button>' +
           '</div>';
       }).join('');
@@ -780,10 +781,37 @@
   });
 
   progListEl.addEventListener('click', function(e){
-    if (!e.target.classList.contains('remove-prog-btn')) return;
     var row = e.target.closest('.row');
+    if (!row) return;
     var id = row.getAttribute('data-id');
-    fetch('/api/admin/program/' + id, { method: 'DELETE' }).then(function(){ loadProgram(); });
+
+    if (e.target.classList.contains('save-prog-btn')){
+      var time = row.querySelector('.prog-time-input').value.trim();
+      var title = row.querySelector('.prog-title-input').value.trim();
+      if (!title){ alert('Please describe the event.'); return; }
+      e.target.disabled = true; e.target.textContent = 'Saving…';
+      fetch('/api/admin/program/' + id, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ time: time, title: title })
+      }).then(function(r){ return r.json().then(function(data){ return { ok: r.ok, data: data }; }); })
+        .then(function(res){
+          if (!res.ok){
+            e.target.disabled = false; e.target.textContent = 'Save';
+            alert((res.data && res.data.error) || 'Something went wrong.');
+            return;
+          }
+          e.target.disabled = false; e.target.textContent = 'Saved ✓';
+          setTimeout(function(){ e.target.textContent = 'Save'; }, 1500);
+        }).catch(function(){
+          e.target.disabled = false; e.target.textContent = 'Save';
+          alert('Network hiccup — please try again.');
+        });
+      return;
+    }
+
+    if (e.target.classList.contains('remove-prog-btn')){
+      fetch('/api/admin/program/' + id, { method: 'DELETE' }).then(function(){ loadProgram(); });
+    }
   });
 
   // ================= Guest Photos =================

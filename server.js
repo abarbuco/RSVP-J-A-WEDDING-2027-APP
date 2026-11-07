@@ -685,17 +685,8 @@ app.get("/api/admin/rsvps", (req, res) => {
   });
 });
 
-// Quotes a CSV field only when it actually needs it (contains a comma,
-// quote, or newline) — keeps the exported file easy to skim in a plain
-// text editor while still being safe to open in Excel/Sheets.
-function csvField(value) {
-  const s = String(value === undefined || value === null ? "" : value);
-  if (/[",\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
-  return s;
-}
-
-// A downloadable, per-person list of everyone who RSVP'd "yes" — one row
-// per actual attendee (the primary guest AND each person they brought
+// A downloadable Excel file of everyone who RSVP'd "yes" — one row per
+// actual attendee (the primary guest AND each person they brought
 // along), not one row per RSVP submission, since that's what's actually
 // useful for headcounts, table/seating charts, and a check-in desk.
 app.get("/api/admin/rsvps/export", (req, res) => {
@@ -707,42 +698,40 @@ app.get("/api/admin/rsvps/export", (req, res) => {
     const names = [e.name].concat(Array.isArray(e.partyNames) ? e.partyNames : []);
     names.forEach((n) => {
       const seat = seating.find((s) => normName(s.name) === normName(n));
+      const isPrimary = normName(n) === normName(e.name);
       rows.push({
-        name: n,
-        partyOf: normName(n) === normName(e.name) ? "" : e.name,
-        table: seat ? seat.table || "" : "",
-        checkedIn: seat && seat.checkedIn ? "Yes" : "No",
-        message: normName(n) === normName(e.name) ? e.message || "" : "",
-        submittedAt: e.submittedAt,
+        Name: n,
+        "Registered With": isPrimary ? "" : e.name,
+        Table: seat ? seat.table || "" : "",
+        "Checked In": seat && seat.checkedIn ? "Yes" : "No",
+        Message: isPrimary ? e.message || "" : "",
+        "RSVP Submitted": e.submittedAt
+          ? new Date(e.submittedAt).toLocaleString("en-US", { timeZone: "Asia/Manila" })
+          : "",
       });
     });
   });
-  rows.sort((a, b) => a.name.localeCompare(b.name));
+  rows.sort((a, b) => a.Name.localeCompare(b.Name));
 
   if (!rows.length) {
     return res.status(404).json({ error: "There are no accepted RSVPs to export yet." });
   }
 
-  const header = ["Name", "Registered With", "Table", "Checked In", "Message", "RSVP Submitted"];
-  const lines = [header.map(csvField).join(",")];
-  rows.forEach((r) => {
-    lines.push([
-      r.name,
-      r.partyOf,
-      r.table,
-      r.checkedIn,
-      r.message,
-      r.submittedAt ? new Date(r.submittedAt).toLocaleString("en-US", { timeZone: "Asia/Manila" }) : "",
-    ].map(csvField).join(","));
-  });
+  const worksheet = XLSX.utils.json_to_sheet(rows);
+  worksheet["!cols"] = [{ wch: 26 }, { wch: 22 }, { wch: 10 }, { wch: 11 }, { wch: 34 }, { wch: 20 }];
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, "Accepted Guests");
+  const buffer = XLSX.write(workbook, { type: "buffer", bookType: "xlsx" });
 
-  const csv = "﻿" + lines.join("\r\n") + "\r\n"; // BOM so Excel renders UTF-8 names correctly
-  res.setHeader("Content-Type", "text/csv; charset=utf-8");
+  res.setHeader(
+    "Content-Type",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+  );
   res.setHeader(
     "Content-Disposition",
-    `attachment; filename="aj-accepted-guests-${new Date().toISOString().slice(0, 10)}.csv"`
+    `attachment; filename="aj-accepted-guests-${new Date().toISOString().slice(0, 10)}.xlsx"`
   );
-  res.send(csv);
+  res.send(buffer);
 });
 
 // --- Seating list (name -> table) -------------------------------------

@@ -128,7 +128,7 @@
     <p class="desc">Type a name to check RSVP status. Table numbers here come from the Seating List below.</p>
     <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
       <input type="search" id="search" placeholder="Type a guest's name…" autocomplete="off" style="flex:1; min-width:200px;" />
-      <a id="exportAcceptedBtn" href="/api/admin/rsvps/export" target="_blank" rel="noopener" style="white-space:nowrap; text-decoration:none; padding:10px 16px; border:1px solid var(--line); border-radius:8px; font-size:.85rem; color:var(--rust);">&#11015; Export accepted guests (CSV)</a>
+      <a id="exportAcceptedBtn" href="/api/admin/rsvps/export" target="_blank" rel="noopener" style="white-space:nowrap; text-decoration:none; padding:10px 16px; border:1px solid var(--line); border-radius:8px; font-size:.85rem; color:var(--rust);">&#11015; Export accepted guests (Excel)</a>
     </div>
     <div class="list" id="list"><p class="empty">Loading…</p></div>
   </div>
@@ -302,7 +302,12 @@
         ? '<button type="button" class="ghost checkin-btn-sm" data-id="' + r.seatingId + '">Check In</button>'
         : '';
       var checkinNote = checkinBtn ? '<span class="checkin-note" data-note-for="' + r.seatingId + '"></span>' : '';
-      var qr = r.seatingId ? '<a class="qr-link" href="/api/qr/' + r.seatingId + '" target="_blank" rel="noopener">View QR</a>' : '';
+      // Matches the Seating List below: same "Print QR Card" wording and
+      // same link to the formatted card page (not the bare QR image), and
+      // only shown once a guest has actually accepted.
+      var qr = (r.attending === 'yes' && r.seatingId)
+        ? '<a class="qr-link" href="/admin/qr-print?q=' + encodeURIComponent(r.name) + '" target="_blank" rel="noopener">Print QR Card</a>'
+        : '';
       var undoBtn = '<button type="button" class="danger undo-rsvp-btn" data-id="' + r.id + '" data-name="' + esc(r.name) + '">Undo RSVP</button>';
       return '<div class="row" data-rsvp-id="' + r.id + '"><span class="name">' + esc(r.name) + '</span>' + pill + table + arrived + checkinBtn + qr +
         '<span class="when">' + fmtDate(r.submittedAt) + '</span>' + party + msg + checkinNote + undoBtn + '</div>';

@@ -204,7 +204,17 @@
   <!-- ---------------- Wedding Program ---------------- -->
   <div class="panel">
     <h2>Wedding Program</h2>
-    <p class="desc">The order of events for the day — shown on the "Find Your Table" page.</p>
+    <p class="desc">The order of events for the day — shown on the "Find Your Table" page. Add items one at a time below, or upload an Excel file with "Time" and "Event" columns — <strong>importing a file replaces the whole program list</strong> with the rows from that file, in order, so make sure it has everything you want shown.</p>
+
+    <div class="field">
+      <label for="progFile">Upload program (.xlsx)</label>
+      <input type="file" id="progFile" accept=".xlsx,.xls" />
+    </div>
+    <button id="progUploadBtn">Upload &amp; Import</button>
+    <div id="progUploadMsg"></div>
+
+    <div class="weave" style="height:1px;background:var(--line);margin:18px 0;"></div>
+
     <div class="row-fields">
       <div class="field" style="flex:0 0 120px;">
         <label for="progTime">Time</label>
@@ -710,6 +720,45 @@
     });
   }
   loadProgram();
+
+  document.getElementById('progUploadBtn').addEventListener('click', function(){
+    var msgEl = document.getElementById('progUploadMsg');
+    var fileInput = document.getElementById('progFile');
+    var file = fileInput.files && fileInput.files[0];
+    if (!file){ msgEl.innerHTML = '<p class="err">Please choose a file first.</p>'; return; }
+    if (!confirm('Importing this file will REPLACE the whole program list with its rows. Continue?')) return;
+    var btn = document.getElementById('progUploadBtn');
+    btn.disabled = true; btn.textContent = 'Uploading…';
+    var reader = new FileReader();
+    reader.onload = function(){
+      var bytes = new Uint8Array(reader.result);
+      var binary = '';
+      var chunk = 0x8000;
+      for (var i = 0; i < bytes.length; i += chunk){
+        binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+      }
+      var base64 = btoa(binary);
+      fetch('/api/admin/program/upload', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ data: base64 })
+      }).then(function(r){ return r.json().then(function(data){ return {ok:r.ok, data:data}; }); })
+        .then(function(res){
+          btn.disabled = false; btn.textContent = 'Upload & Import';
+          if (!res.ok){
+            msgEl.innerHTML = '<p class="err">' + esc(res.data.error || 'Could not import that file.') + '</p>';
+            return;
+          }
+          msgEl.innerHTML = '<p class="ok">Imported ' + res.data.imported + ' program item(s)' +
+            (res.data.skipped ? ', skipped ' + res.data.skipped + ' blank row(s)' : '') + '.</p>';
+          fileInput.value = '';
+          loadProgram();
+        }).catch(function(){
+          btn.disabled = false; btn.textContent = 'Upload & Import';
+          msgEl.innerHTML = '<p class="err">Network hiccup — please try again.</p>';
+        });
+    };
+    reader.readAsArrayBuffer(file);
+  });
 
   document.getElementById('progBtn').addEventListener('click', function(){
     var msgEl = document.getElementById('progMsg');

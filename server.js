@@ -1211,6 +1211,62 @@ app.delete("/api/admin/program/:id", (req, res) => {
   res.json({ ok: true });
 });
 
+// Imports the whole run-of-show from an Excel file (columns "Time" and
+// "Event"/"Title"/"Activity"), in row order. Unlike the seating-list
+// upload (which merges by name), this REPLACES the entire program list —
+// a day's agenda doesn't have a natural key to match existing rows
+// against, and re-importing a corrected spreadsheet is the common case,
+// so starting clean each time avoids leftover/duplicate items. The admin
+// UI warns about this and asks for confirmation before uploading.
+app.post("/api/admin/program/upload", (req, res) => {
+  const body = req.body || {};
+  const base64 = String(body.data || "");
+  if (!base64) return res.status(400).json({ error: "No file received." });
+
+  let rows;
+  try {
+    const buf = Buffer.from(base64, "base64");
+    const workbook = XLSX.read(buf, { type: "buffer" });
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    rows = XLSX.utils.sheet_to_json(sheet, { defval: "" });
+  } catch (err) {
+    console.error("Program upload parse failed:", err);
+    return res.status(400).json({ error: "Could not read that file. Please upload a .xlsx or .xls file." });
+  }
+
+  if (!rows.length) return res.status(400).json({ error: "That file looks empty." });
+
+  const headerKeys = Object.keys(rows[0]);
+  const timeKey = headerKeys.find((k) => /^time$/i.test(k.trim())) || headerKeys.find((k) => /time/i.test(k));
+  const titleKey = headerKeys.find((k) => /^(event|title|activity|program|description)$/i.test(k.trim()))
+    || headerKeys.find((k) => /event|title|activity|program|description/i.test(k));
+
+  if (!titleKey) {
+    return res.status(400).json({
+      error: 'Could not find an Event column. Please include a column named "Event" (or "Title"/"Activity").',
+    });
+  }
+
+  const program = [];
+  let skipped = 0;
+  rows.forEach((row) => {
+    const title = String(row[titleKey] || "").trim().slice(0, 120);
+    const time = timeKey ? String(row[timeKey] || "").trim().slice(0, 40) : "";
+    if (!title) {
+      skipped++;
+      return;
+    }
+    program.push({ id: crypto.randomUUID(), time, title });
+  });
+
+  if (!program.length) {
+    return res.status(400).json({ error: "No valid program rows found — make sure each row has an event name." });
+  }
+
+  writeProgram(program);
+  res.json({ ok: true, imported: program.length, skipped, total: program.length });
+});
+
 // --- Site settings (shared photo album link, RSVP deadline, etc.) ----------
 // A small key/value config Annie can edit from /admin without a code change
 // or redeploy. Public so the invitation page can show the album button and

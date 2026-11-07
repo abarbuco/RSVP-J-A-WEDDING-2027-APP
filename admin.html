@@ -69,6 +69,9 @@
   .pill.yes{ background:rgba(77,106,58,.14); color:var(--good); }
   .pill.no{ background:rgba(154,80,48,.14); color:var(--bad); }
   .pill.arrived{ background:rgba(201,154,74,.18); color:var(--gold-soft); font-weight:600; }
+  .pill.pending{ background:rgba(43,33,26,.08); color:var(--ink-soft); }
+  .row .party-of{ font-size:.72rem; color:var(--ink-soft); font-style:italic; white-space:nowrap; }
+  .row input.name-input{ font-weight:600; flex:1 1 150px; min-width:120px; padding:6px 8px; font-size:.95rem; }
   .checkin-btn-sm{ font-size:.72rem; padding:5px 14px; }
   .undo-rsvp-btn{ font-size:.72rem; padding:5px 14px; }
   .checkin-note{ flex-basis:100%; font-size:.78rem; color:var(--bad); }
@@ -123,7 +126,10 @@
   <div class="panel">
     <h2>Guest List</h2>
     <p class="desc">Type a name to check RSVP status. Table numbers here come from the Seating List below.</p>
-    <input type="search" id="search" placeholder="Type a guest's name…" autocomplete="off" />
+    <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+      <input type="search" id="search" placeholder="Type a guest's name…" autocomplete="off" style="flex:1; min-width:200px;" />
+      <a id="exportAcceptedBtn" href="/api/admin/rsvps/export" target="_blank" rel="noopener" style="white-space:nowrap; text-decoration:none; padding:10px 16px; border:1px solid var(--line); border-radius:8px; font-size:.85rem; color:var(--rust);">&#11015; Export accepted guests (CSV)</a>
+    </div>
     <div class="list" id="list"><p class="empty">Loading…</p></div>
   </div>
 
@@ -269,6 +275,7 @@
   var searchEl = document.getElementById('search');
 
   function esc(s){ return String(s).replace(/</g,'&lt;'); }
+  function normNameLocal(s){ return String(s || '').trim().toLowerCase().replace(/\s+/g, ' '); }
   function fmtDate(iso){
     try { return new Date(iso).toLocaleDateString(undefined, { month:'short', day:'numeric' }); }
     catch(e){ return ''; }
@@ -391,15 +398,40 @@
     }
     seatListEl.innerHTML = rows.map(function(s){
       var checked = selectedSeatIds[s.id] ? ' checked' : '';
+      var statusPill = s.status === 'yes'
+        ? '<span class="pill yes">Accepted</span>'
+        : s.status === 'no'
+          ? '<span class="pill no">Declined</span>'
+          : '<span class="pill pending">No response yet</span>';
+      var partyOf = s.partyOf ? '<span class="party-of">with ' + esc(s.partyOf) + '’s RSVP</span>' : '';
+      // A QR code only gets created once a guest has actually accepted —
+      // there's no boarding pass to show for someone who hasn't RSVP'd or
+      // who declined. And since scanning ANY one person's QR shows their
+      // whole party together, a plus-one brought along inside someone
+      // else's RSVP (partyOf is set) shares the exact same QR/boarding
+      // pass as that RSVP's owner, so we don't print a redundant, separate
+      // one for them — just point to whose card already covers them.
+      var qrLinks;
+      if (s.status !== 'yes') {
+        qrLinks = '<span class="party-of">QR available once accepted</span>';
+      } else if (s.partyOf) {
+        var owner = allSeating.find(function(x){ return normNameLocal(x.name) === normNameLocal(s.partyOf); });
+        qrLinks = owner
+          ? '<a class="qr-link" href="/api/qr/' + owner.id + '" target="_blank" rel="noopener">View QR (via ' + esc(owner.name) + ')</a>'
+          : '<span class="party-of">Same QR as ' + esc(s.partyOf) + '</span>';
+      } else {
+        qrLinks = '<a class="qr-link" href="/api/qr/' + s.id + '" target="_blank" rel="noopener">View QR</a>' +
+          '<a class="qr-link" href="/admin/qr-print?q=' + encodeURIComponent(s.name) + '" target="_blank" rel="noopener">Print QR Card</a>';
+      }
       return '<div class="row" data-id="' + s.id + '">' +
         '<input type="checkbox" class="seat-select" data-id="' + s.id + '"' + checked + ' title="Select for bulk attending" />' +
-        '<span class="name">' + esc(s.name) + '</span>' +
+        '<input type="text" class="name-input" value="' + esc(s.name) + '" placeholder="Name" title="Rename this guest" />' +
+        statusPill + partyOf +
         '<input type="text" class="table-input nickname-input" value="' + esc(s.nickname || '') + '" placeholder="Nickname" />' +
         '<input type="text" class="table-input" value="' + esc(s.table || '') + '" placeholder="Table" />' +
         '<input type="number" class="table-input max-guests-input" min="1" max="20" value="' + esc(s.maxGuests || 1) + '" title="Guests allowed" />' +
         '<button class="ghost save-seat-btn" type="button">Save</button>' +
-        '<a class="qr-link" href="/api/qr/' + s.id + '" target="_blank" rel="noopener">View QR</a>' +
-        '<a class="qr-link" href="/admin/qr-print?q=' + encodeURIComponent(s.name) + '" target="_blank" rel="noopener">Print QR Card</a>' +
+        qrLinks +
         '<button class="danger remove-seat-btn" type="button">Remove</button>' +
         '</div>';
     }).join('');
@@ -476,21 +508,32 @@
     if (!row) return;
     var id = row.getAttribute('data-id');
     if (e.target.classList.contains('save-seat-btn')){
-      var name = row.querySelector('.name').textContent;
+      var name = row.querySelector('.name-input').value.trim();
       var nickname = row.querySelector('.nickname-input').value;
-      var table = row.querySelector('.table-input:not(.nickname-input)').value;
+      var table = row.querySelector('.table-input:not(.nickname-input):not(.max-guests-input)').value;
       var maxGuests = row.querySelector('.max-guests-input').value;
+      if (!name){ alert('Please enter a name.'); return; }
       e.target.disabled = true; e.target.textContent = 'Saving…';
-      fetch('/api/admin/seating', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
+      // A dedicated by-id update — unlike the upsert-by-name POST used
+      // when adding a brand-new guest, this always edits THIS row, so
+      // fixing a typo in the name can never create a duplicate entry.
+      fetch('/api/admin/seating/' + id, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: name, nickname: nickname, table: table, maxGuests: maxGuests })
-      }).then(function(r){ return r.json(); }).then(function(){
-        e.target.disabled = false; e.target.textContent = 'Saved ✓';
-        setTimeout(function(){ e.target.textContent = 'Save'; }, 1500);
-        loadSeating();
-      }).catch(function(){
-        e.target.disabled = false; e.target.textContent = 'Save';
-      });
+      }).then(function(r){ return r.json().then(function(data){ return { ok: r.ok, data: data }; }); })
+        .then(function(res){
+          if (!res.ok){
+            e.target.disabled = false; e.target.textContent = 'Save';
+            alert((res.data && res.data.error) || 'Something went wrong.');
+            return;
+          }
+          e.target.disabled = false; e.target.textContent = 'Saved ✓';
+          setTimeout(function(){ e.target.textContent = 'Save'; }, 1500);
+          loadSeating();
+        }).catch(function(){
+          e.target.disabled = false; e.target.textContent = 'Save';
+          alert('Network hiccup — please try again.');
+        });
     }
     if (e.target.classList.contains('remove-seat-btn')){
       if (!confirm('Remove this guest from the seating list?')) return;

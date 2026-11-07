@@ -685,15 +685,91 @@ app.get("/api/admin/rsvps", (req, res) => {
   });
 });
 
+// Quotes a CSV field only when it actually needs it (contains a comma,
+// quote, or newline) — keeps the exported file easy to skim in a plain
+// text editor while still being safe to open in Excel/Sheets.
+function csvField(value) {
+  const s = String(value === undefined || value === null ? "" : value);
+  if (/[",\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+  return s;
+}
+
+// A downloadable, per-person list of everyone who RSVP'd "yes" — one row
+// per actual attendee (the primary guest AND each person they brought
+// along), not one row per RSVP submission, since that's what's actually
+// useful for headcounts, table/seating charts, and a check-in desk.
+app.get("/api/admin/rsvps/export", (req, res) => {
+  const entries = readAll().filter((e) => e.attending === "yes");
+  const seating = readSeating();
+
+  const rows = [];
+  entries.forEach((e) => {
+    const names = [e.name].concat(Array.isArray(e.partyNames) ? e.partyNames : []);
+    names.forEach((n) => {
+      const seat = seating.find((s) => normName(s.name) === normName(n));
+      rows.push({
+        name: n,
+        partyOf: normName(n) === normName(e.name) ? "" : e.name,
+        table: seat ? seat.table || "" : "",
+        checkedIn: seat && seat.checkedIn ? "Yes" : "No",
+        message: normName(n) === normName(e.name) ? e.message || "" : "",
+        submittedAt: e.submittedAt,
+      });
+    });
+  });
+  rows.sort((a, b) => a.name.localeCompare(b.name));
+
+  if (!rows.length) {
+    return res.status(404).json({ error: "There are no accepted RSVPs to export yet." });
+  }
+
+  const header = ["Name", "Registered With", "Table", "Checked In", "Message", "RSVP Submitted"];
+  const lines = [header.map(csvField).join(",")];
+  rows.forEach((r) => {
+    lines.push([
+      r.name,
+      r.partyOf,
+      r.table,
+      r.checkedIn,
+      r.message,
+      r.submittedAt ? new Date(r.submittedAt).toLocaleString("en-US", { timeZone: "Asia/Manila" }) : "",
+    ].map(csvField).join(","));
+  });
+
+  const csv = "﻿" + lines.join("\r\n") + "\r\n"; // BOM so Excel renders UTF-8 names correctly
+  res.setHeader("Content-Type", "text/csv; charset=utf-8");
+  res.setHeader(
+    "Content-Disposition",
+    `attachment; filename="aj-accepted-guests-${new Date().toISOString().slice(0, 10)}.csv"`
+  );
+  res.send(csv);
+});
+
 // --- Seating list (name -> table) -------------------------------------
 // This is the source of truth for table numbers and per-guest QR codes.
 // It's independent of the RSVP responses, since Annie's master seating
 // list (uploaded from Excel) may include guests who haven't RSVP'd yet.
+// Each seating entry comes back with its current RSVP status — "yes",
+// "no", or "pending" (nobody has responded for them yet) — so the admin
+// Seating list can show who's accepted/declined without Annie having to
+// cross-reference the separate Guest List panel. partyOf names whoever's
+// RSVP this person was registered under, when it wasn't their own (e.g.
+// a plus-one brought along inside someone else's multi-person RSVP).
 app.get("/api/admin/seating", (req, res) => {
   const list = readSeating()
     .slice()
     .sort((a, b) => a.name.localeCompare(b.name));
-  res.json({ seating: list });
+  const rsvps = readAll();
+  const withStatus = list.map((s) => {
+    const key = normName(s.name);
+    const owner = findOwningRsvp(rsvps, key);
+    const ownedBySelf = owner && normName(owner.name) === key;
+    return Object.assign({}, s, {
+      status: !owner ? "pending" : ownedBySelf ? owner.attending : "yes",
+      partyOf: owner && !ownedBySelf ? owner.name : null,
+    });
+  });
+  res.json({ seating: withStatus });
 });
 
 app.post("/api/admin/seating", (req, res) => {
@@ -705,6 +781,71 @@ app.post("/api/admin/seating", (req, res) => {
   const { entry, created } = upsertSeatingRow(list, name, body.table, body.maxGuests, body.nickname);
   writeSeating(list);
   res.status(created ? 201 : 200).json({ ok: true, entry, created });
+});
+
+// Renames a specific seating entry by id (plus can update its nickname,
+// table and guests-allowed in the same request) — used by the Seating
+// list's per-row "Save" button. Unlike the upsert-by-name POST above
+// (meant for adding a brand-new guest, or an Excel re-upload), this
+// always edits the ONE row the admin is looking at, so fixing a typo in
+// someone's name can never accidentally create a second, duplicate
+// guest-list entry. If that guest already has an RSVP on file (on their
+// own, or as part of someone else's party), the matching record(s) are
+// updated to the new spelling too, so the Guest List and table lookups
+// stay in sync.
+app.put("/api/admin/seating/:id", (req, res) => {
+  const body = req.body || {};
+  const list = readSeating();
+  const entry = list.find((s) => s.id === req.params.id);
+  if (!entry) return res.status(404).json({ error: "Guest not found." });
+
+  const newName = body.name !== undefined ? String(body.name).trim().slice(0, 80) : entry.name;
+  if (!newName) return res.status(400).json({ error: "Please enter a name." });
+
+  const newKey = normName(newName);
+  const collision = list.find((s) => s.id !== entry.id && normName(s.name) === newKey);
+  if (collision) {
+    return res.status(409).json({
+      error: `"${newName}" is already on the guest list as a separate entry. Please choose a different spelling, or remove the duplicate first.`,
+    });
+  }
+
+  const oldName = entry.name;
+  entry.name = newName;
+  if (body.nickname !== undefined) entry.nickname = String(body.nickname).trim().slice(0, 60) || null;
+  if (body.table !== undefined) entry.table = String(body.table).trim().slice(0, 20) || null;
+  if (body.maxGuests !== undefined) {
+    const parsed = parseInt(body.maxGuests, 10);
+    entry.maxGuests = Number.isFinite(parsed) && parsed >= 1 ? Math.min(parsed, 20) : entry.maxGuests || 1;
+  }
+  writeSeating(list);
+
+  let rsvpsTouched = 0;
+  const renamed = normName(oldName) !== newKey;
+  if (renamed) {
+    const entries = readAll();
+    const oldKey = normName(oldName);
+    entries.forEach((e) => {
+      let touched = false;
+      if (normName(e.name) === oldKey) {
+        e.name = newName;
+        touched = true;
+      }
+      if (Array.isArray(e.partyNames)) {
+        e.partyNames = e.partyNames.map((n) => {
+          if (normName(n) === oldKey) {
+            touched = true;
+            return newName;
+          }
+          return n;
+        });
+      }
+      if (touched) rsvpsTouched++;
+    });
+    if (rsvpsTouched) writeAll(entries);
+  }
+
+  res.json({ ok: true, entry, renamed, rsvpsTouched });
 });
 
 app.delete("/api/admin/seating/:id", (req, res) => {
